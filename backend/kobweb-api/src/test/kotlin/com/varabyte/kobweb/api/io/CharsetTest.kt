@@ -1,4 +1,4 @@
-package com.varabyte.kobweb.api.http
+package com.varabyte.kobweb.api.io
 
 import com.varabyte.truthish.assertThat
 import kotlin.test.Test
