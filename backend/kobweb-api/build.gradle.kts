@@ -8,6 +8,8 @@ version = libs.versions.kobweb.get()
 
 dependencies {
     implementation(projects.common.clientServerInternal)
+    testImplementation(kotlin("test"))
+    testImplementation(libs.truthish)
 }
 
 kobwebPublication {

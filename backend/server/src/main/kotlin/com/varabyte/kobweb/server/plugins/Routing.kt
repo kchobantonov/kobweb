@@ -2,10 +2,10 @@ package com.varabyte.kobweb.server.plugins
 
 import com.varabyte.kobweb.api.Apis
 import com.varabyte.kobweb.api.event.EventDispatcher
-import com.varabyte.kobweb.api.http.EMPTY_BODY
 import com.varabyte.kobweb.api.http.HttpMethod
 import com.varabyte.kobweb.api.http.MutableRequest
 import com.varabyte.kobweb.api.http.Request
+import com.varabyte.kobweb.api.http.Response
 import com.varabyte.kobweb.api.log.Logger
 import com.varabyte.kobweb.api.stream.ApiStream
 import com.varabyte.kobweb.api.stream.Stream
@@ -140,14 +140,13 @@ private suspend fun RoutingContext.handleApiCall(
     logger: Logger,
 ) {
     call.parameters.getAll(KOBWEB_PARAMS)?.joinToString("/")?.let { pathStr ->
-        val body: ByteArray? = when (httpMethod) {
+        val body: Request.Body? = when (httpMethod) {
             HttpMethod.PATCH, HttpMethod.POST, HttpMethod.PUT -> {
-                withContext(Dispatchers.IO) { call.receiveStream().readAllBytes() }.takeIf { it.isNotEmpty() }
+                Request.Body(call.request.contentType().toString()) { call.receiveStream() }
             }
 
             else -> null
         }
-        val bodyContentType = if (body != null) call.request.contentType().toString() else null
 
         val query = call.request.queryParameters
             .flattenEntries()
@@ -165,18 +164,17 @@ private suspend fun RoutingContext.handleApiCall(
             headers,
             call.request.cookies.rawCookies,
             body,
-            bodyContentType
         )
         try {
             val response = apiJar.apis.handle("/$pathStr", request)
             response.headers.forEach { (key, value) ->
                 call.response.headers.append(key, value)
             }
+            val body = response.body?.takeIf { httpMethod != HttpMethod.HEAD }
             call.respondBytes(
-                response.body.takeIf { httpMethod != HttpMethod.HEAD } ?: EMPTY_BODY,
+                body?.content ?: Response.Body.EmptyContent,
                 status = HttpStatusCode.fromValue(response.status),
-                contentType = response.contentType?.takeIf { httpMethod != HttpMethod.HEAD }
-                    ?.let { ContentType.parse(it) }
+                contentType = body?.contentType?.let { ContentType.parse(it) }
             )
         } catch (t: Throwable) {
             val fullErrorString = t.stackTraceToString()
@@ -195,7 +193,7 @@ private suspend fun RoutingContext.handleApiCall(
                     )
                 }
 
-                else -> call.respondBytes(EMPTY_BODY, status = HttpStatusCode.InternalServerError)
+                else -> call.respondBytes(Response.Body.EmptyContent, status = HttpStatusCode.InternalServerError)
             }
         }
     }

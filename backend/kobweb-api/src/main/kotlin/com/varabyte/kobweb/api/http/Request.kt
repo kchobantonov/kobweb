@@ -4,6 +4,8 @@ import com.varabyte.kobweb.api.ApiContext
 import com.varabyte.kobweb.api.data.Data
 import com.varabyte.kobweb.api.data.MutableData
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
+import java.io.InputStream
+import java.nio.charset.Charset
 
 /**
  * Information passed into an API endpoint from the client.
@@ -28,6 +30,32 @@ import com.varabyte.kobweb.api.intercept.ApiInterceptor
  * @see Response
  */
 interface Request {
+    class Body private constructor(val contentType: String, private val dataProvider: DataProvider) {
+        private sealed interface DataProvider {
+            class Stream(val provideStream: suspend () -> InputStream) : DataProvider
+        }
+
+        constructor(contentType: String, produceStream: suspend () -> InputStream) : this(
+            contentType,
+            DataProvider.Stream(produceStream)
+        )
+
+        /**
+         * Fetch an [InputStream] associated with this request body.
+         *
+         * This should only be called once per request body.
+         *
+         * You should remember to call [InputStream.use] on the returned stream or at least [InputStream.close].
+         */
+        suspend fun stream(): InputStream {
+            @Suppress("REDUNDANT_ELSE_IN_WHEN") // Will be adding more branches in a followup commit
+            return when (val dataProvider = dataProvider) {
+                is DataProvider.Stream -> dataProvider.provideStream()
+                else -> throw IllegalStateException("The body of this request does not support being queried as a stream.")
+            }
+        }
+    }
+
     /** Information about the connection that carried the request. */
     val connection: Connection
     /** The type of http method this call was sent with. */
@@ -60,14 +88,12 @@ interface Request {
      */
     val data: Data
     /**
-     * An (optional) payload sent with the request.
+     * The body payload sent with the request.
      *
      * Will only potentially be set with appropriate methods that are allowed to send data, i.e. [HttpMethod.POST],
-     * [HttpMethod.PUT], and [HttpMethod.PATCH]
+     * [HttpMethod.PUT], and [HttpMethod.PATCH]. This value will be null if no body is set / applicable.
      */
-    val body: ByteArray?
-    /** The content type of the [body], if set and sent. */
-    val contentType: String?
+    val body: Body?
 
     /**
      * Top-level container class for views about a connection for some request.
@@ -123,8 +149,7 @@ class MutableRequest(
     queryParams: Map<String, String>,
     headers: Map<String, List<String>>,
     cookies: Map<String, String>,
-    override var body: ByteArray?,
-    override var contentType: String?,
+    override var body: Request.Body?,
     override val data: MutableData = MutableData(),
 ) : Request {
     constructor(request: Request) : this(
@@ -135,7 +160,6 @@ class MutableRequest(
         request.headers,
         request.cookies,
         request.body,
-        request.contentType,
         request.data.toMutableData(),
     )
 
@@ -149,10 +173,13 @@ class MutableRequest(
 }
 
 /**
- * Convenience method to pull body text out from a request.
- *
- * Otherwise, you'd have to deal with the raw [ByteArray] and convert it to a [String] yourself.
+ * Convenience method to convert a body stream() into a UTF-8 string.
  */
-fun Request.readBodyText(): String? {
-    return body?.toString(Charsets.UTF_8)
+suspend fun Request.Body.text(charset: Charset = contentType.parseCharsetFromContentType()): String {
+    return stream().use { it.readAllBytes().toString(charset) }
+}
+
+@Deprecated("Use `req.body?.text()` instead", ReplaceWith("body?.text()"))
+suspend fun Request.readBodyText(): String? {
+    return body?.text()
 }

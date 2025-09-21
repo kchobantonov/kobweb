@@ -3,13 +3,11 @@ package com.varabyte.kobweb.api.http
 import com.varabyte.kobweb.api.ApiContext
 import com.varabyte.kobweb.api.data.MutableData
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
+import java.nio.charset.Charset
 
 private val VALID_REDIRECT_STATUS_CODES = setOf(301, 302, 303, 307, 308)
 private const val API_PREFIX = "/api"
 private const val API_PREFIX_WITH_TRAILING_SLASH = "$API_PREFIX/"
-
-/** A convenience value you can use if you want to express intention that your body should be empty */
-val EMPTY_BODY = ByteArray(0)
 
 /**
  * Data to send back to the client after it makes a request to an API endpoint.
@@ -27,8 +25,27 @@ val EMPTY_BODY = ByteArray(0)
  * @see Request
  */
 class Response {
+    class Body(
+        val content: ByteArray,
+        /**
+         * The content type of this body, e.g. "image/jpeg" or "application/json". Can include parameters.
+         *
+         * @see <a href="https://www.w3.org/Protocols/rfc1341/4_Content-Type.html">The Content-Type Header Field</a>
+         */
+        val contentType: String = "application/octet-stream",
+    ) {
+        companion object {
+            val EmptyContent = ByteArray(0)
+
+            fun text(text: String, charset: Charset = Charsets.UTF_8, contentType: String = "text/plain; charset=${charset.name()}") = Body(
+                text.toByteArray(charset), contentType
+            )
+
+            fun json(text: String, contentType: String = "application/json") = text(text, contentType = contentType)
+        }
+    }
+
     private var _status: Int? = null
-    private var _body: ByteArray? = null
 
     /** @see <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">HTTP response status codes</a> */
     var status: Int
@@ -37,22 +54,18 @@ class Response {
             _status = value
         }
 
-    /** The body payload to send back */
-    var body: ByteArray
-        get() = _body ?: EMPTY_BODY
+    /**
+     * The body payload.
+     *
+     * Leave null if there should be no body to send back with this response.
+     */
+    var body: Body? = null
         set(value) {
-            if (_status == null) {
+            if (value != null && _status == null) {
                 _status = 200
             }
-            _body = value
+            field = value
         }
-
-    /**
-     * The content type of the [body], e.g. "image/jpeg" or "application/json". Can include parameters.
-     *
-     * @see <a href="https://www.w3.org/Protocols/rfc1341/4_Content-Type.html">The Content-Type Header Field</a>
-     */
-    var contentType: String? = null
 
     /**
      * Any additional headers to send back to the client.
@@ -71,8 +84,9 @@ class Response {
 /**
  * Convenience method for setting the body to a text value.
  */
+@Deprecated("We introduced the `Response.Body` class so you should set `body` directly instead.", ReplaceWith("body = Response.Body.text(text)"))
 fun Response.setBodyText(text: String) {
-    body = text.toByteArray(Charsets.UTF_8)
+    body = Response.Body.text(text)
 }
 
 /**
