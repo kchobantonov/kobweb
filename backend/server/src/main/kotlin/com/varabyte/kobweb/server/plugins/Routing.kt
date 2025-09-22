@@ -5,7 +5,7 @@ import com.varabyte.kobweb.api.event.EventDispatcher
 import com.varabyte.kobweb.api.http.HttpMethod
 import com.varabyte.kobweb.api.http.MutableRequest
 import com.varabyte.kobweb.api.http.Request
-import com.varabyte.kobweb.api.http.Response
+import com.varabyte.kobweb.api.io.ByteSource
 import com.varabyte.kobweb.api.log.Logger
 import com.varabyte.kobweb.api.stream.ApiStream
 import com.varabyte.kobweb.api.stream.Stream
@@ -33,6 +33,11 @@ import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
 import io.ktor.util.*
+import io.ktor.utils.io.ByteReadChannel
+import io.ktor.utils.io.ByteWriteChannel
+import io.ktor.utils.io.cancel
+import io.ktor.utils.io.readAvailable
+import io.ktor.utils.io.writeFully
 import io.ktor.websocket.*
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
@@ -133,6 +138,46 @@ private fun RequestConnectionPoint.toRequestConnectionDetails() = Request.Connec
     serverPort = serverPort,
 )
 
+private fun ByteReadChannel.toByteSource(): ByteSource = object : ByteSource {
+    @Volatile private var closed = false
+
+    private val channel = this@toByteSource // For readability
+
+    override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        if (closed) return -1
+        if (length == 0) return 0
+
+        while (true) {
+            // Ktor: may return >0, 0 (no data yet), or -1 (EOF)
+            val bytesRead = channel.readAvailable(buffer, offset, length)
+            if (bytesRead > 0) return bytesRead
+            if (bytesRead < 0) return -1
+            if (channel.isClosedForRead) return -1
+            channel.awaitContent()
+        }
+    }
+
+    override fun close() {
+        if (closed) return
+        closed = true
+        runCatching { channel.cancel() }
+    }
+}
+
+private suspend fun ByteSource.transferTo(channel: ByteWriteChannel): Int {
+    val buf = ByteArray(64 * 1024)
+    var bytesCopied = 0
+    while (true) {
+        val bytesRead = read(buf)
+        if (bytesRead == -1) break
+        if (bytesRead > 0) {
+            channel.writeFully(buf, 0, bytesRead)
+            bytesCopied += bytesRead
+        }
+    }
+    return bytesCopied
+}
+
 private suspend fun RoutingContext.handleApiCall(
     env: ServerEnvironment,
     apiJar: ApiJarFile,
@@ -142,7 +187,7 @@ private suspend fun RoutingContext.handleApiCall(
     call.parameters.getAll(KOBWEB_PARAMS)?.joinToString("/")?.let { pathStr ->
         val body: Request.Body? = when (httpMethod) {
             HttpMethod.PATCH, HttpMethod.POST, HttpMethod.PUT -> {
-                Request.Body(call.request.contentType().toString()) { call.receiveStream() }
+                Request.Body(call.request.contentType().toString()) { call.receiveChannel().toByteSource() }
             }
 
             else -> null
@@ -171,11 +216,12 @@ private suspend fun RoutingContext.handleApiCall(
                 call.response.headers.append(key, value)
             }
             val body = response.body?.takeIf { httpMethod != HttpMethod.HEAD }
-            call.respondBytes(
-                body?.content ?: Response.Body.EmptyContent,
+            call.respondBytesWriter(
                 status = HttpStatusCode.fromValue(response.status),
                 contentType = body?.contentType?.let { ContentType.parse(it) }
-            )
+            ) {
+                (body?.openContent() ?: ByteSource.empty()).use { it.transferTo(this) }
+            }
         } catch (t: Throwable) {
             val fullErrorString = t.stackTraceToString()
             logger.error(fullErrorString)
@@ -193,7 +239,7 @@ private suspend fun RoutingContext.handleApiCall(
                     )
                 }
 
-                else -> call.respondBytes(Response.Body.EmptyContent, status = HttpStatusCode.InternalServerError)
+                else -> call.respondBytes(byteArrayOf(), status = HttpStatusCode.InternalServerError)
             }
         }
     }

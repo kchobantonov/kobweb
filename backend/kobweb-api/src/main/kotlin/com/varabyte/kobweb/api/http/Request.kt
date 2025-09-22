@@ -4,8 +4,9 @@ import com.varabyte.kobweb.api.ApiContext
 import com.varabyte.kobweb.api.data.Data
 import com.varabyte.kobweb.api.data.MutableData
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
+import com.varabyte.kobweb.api.io.ByteSource
 import com.varabyte.kobweb.api.io.parseCharsetFromContentType
-import java.io.InputStream
+import com.varabyte.kobweb.api.io.readRemaining
 import java.nio.charset.Charset
 
 /**
@@ -16,14 +17,14 @@ import java.nio.charset.Charset
  *
  * ```
  * @Api
- * fun echo(ctx: ApiContext) {
+ * suspend fun echo(ctx: ApiContext) {
  *   val msg = ctx.req.params["msg"]
  *   if (msg != null) {
- *     ctx.res.setBodyText("Received message: $msg")
+ *     ctx.res.body = Response.Body.text("Received message: $msg")
  *   }
  *   else {
  *     ctx.res.status = 400
- *     ctx.res.setBodyText("Missing: required parameter 'msg'")
+ *     ctx.res.body = Response.Body.text("Missing: required parameter 'msg'")
  *   }
  * }
  * ```
@@ -31,30 +32,15 @@ import java.nio.charset.Charset
  * @see Response
  */
 interface Request {
-    class Body private constructor(val contentType: String, private val dataProvider: DataProvider) {
-        private sealed interface DataProvider {
-            class Stream(val provideStream: suspend () -> InputStream) : DataProvider
-        }
+    /**
+     * The body of the request.
+     *
+     * Note that its contents can only be consumed once, via the [ByteSource] returned by [openContent].
+     */
+    class Body(val contentType: String, private val provideContent: suspend () -> ByteSource) {
+        constructor(contentType: String, content: ByteSource) : this(contentType, { content })
 
-        constructor(contentType: String, produceStream: suspend () -> InputStream) : this(
-            contentType,
-            DataProvider.Stream(produceStream)
-        )
-
-        /**
-         * Fetch an [InputStream] associated with this request body.
-         *
-         * This should only be called once per request body.
-         *
-         * You should remember to call [InputStream.use] on the returned stream or at least [InputStream.close].
-         */
-        suspend fun stream(): InputStream {
-            @Suppress("REDUNDANT_ELSE_IN_WHEN") // Will be adding more branches in a followup commit
-            return when (val dataProvider = dataProvider) {
-                is DataProvider.Stream -> dataProvider.provideStream()
-                else -> throw IllegalStateException("The body of this request does not support being queried as a stream.")
-            }
-        }
+        suspend fun openContent() = provideContent()
     }
 
     /** Information about the connection that carried the request. */
@@ -174,10 +160,21 @@ class MutableRequest(
 }
 
 /**
- * Convenience method to convert a body stream() into a UTF-8 string.
+ * Convenience method to convert a body's content into a raw byte array
+ *
+ * @param limit If set and the size of the body is larger than it, throw an exception.
  */
-suspend fun Request.Body.text(charset: Charset = contentType.parseCharsetFromContentType()): String {
-    return stream().use { it.readAllBytes().toString(charset) }
+suspend fun Request.Body.bytes(limit: Int? = null): ByteArray {
+    return openContent().use { it.readRemaining(limit) }
+}
+
+/**
+ * Convenience method to convert a body's content into a UTF-8 string.
+ *
+ * @param limit If set and the size of the body is larger than it, throw an exception.
+ */
+suspend fun Request.Body.text(charset: Charset = contentType.parseCharsetFromContentType(), limit: Int? = null): String {
+    return bytes(limit).toString(charset)
 }
 
 @Deprecated("Use `req.body?.text()` instead", ReplaceWith("body?.text()"))

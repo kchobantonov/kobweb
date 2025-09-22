@@ -3,6 +3,8 @@ package com.varabyte.kobweb.api.http
 import com.varabyte.kobweb.api.ApiContext
 import com.varabyte.kobweb.api.data.MutableData
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
+import com.varabyte.kobweb.api.io.ByteSource
+import com.varabyte.kobweb.api.io.RawByteSource
 import java.nio.charset.Charset
 
 private val VALID_REDIRECT_STATUS_CODES = setOf(301, 302, 303, 307, 308)
@@ -18,31 +20,36 @@ private const val API_PREFIX_WITH_TRAILING_SLASH = "$API_PREFIX/"
  * ```
  * @Api
  * fun demo(ctx: ApiContext) {
- *   ctx.res.setBodyText("This is how you send text back to the client")
+ *   ctx.res.body = Response.Body.text("This is how you send text back to the client")
  * }
  * ```
  *
  * @see Request
  */
 class Response {
+    /**
+     * The body of the response.
+     *
+     * Note that its contents can only be consumed once, via the [ByteSource] returned by [openContent].
+     *
+     * You can construct a body directly if you are comfortable working with [ByteSource], but several helper factory
+     * methods are provided, such as [bytes] and [text].
+     */
     class Body(
-        val content: ByteArray,
         /**
          * The content type of this body, e.g. "image/jpeg" or "application/json". Can include parameters.
          *
          * @see <a href="https://www.w3.org/Protocols/rfc1341/4_Content-Type.html">The Content-Type Header Field</a>
          */
         val contentType: String = "application/octet-stream",
+        private val provideContent: suspend () -> ByteSource,
     ) {
-        companion object {
-            val EmptyContent = ByteArray(0)
+        @Suppress("RemoveEmptyClassBody") // Necessary to avoid confusion with constructor below
+        companion object {} // Declared so we can extend it with factory methods
 
-            fun text(text: String, charset: Charset = Charsets.UTF_8, contentType: String = "text/plain; charset=${charset.name()}") = Body(
-                text.toByteArray(charset), contentType
-            )
+        constructor(content: ByteSource, contentType: String = "application/octet-stream") : this(contentType, { content })
 
-            fun json(text: String, contentType: String = "application/json") = text(text, contentType = contentType)
-        }
+        suspend fun openContent() = provideContent()
     }
 
     private var _status: Int? = null
@@ -81,10 +88,22 @@ class Response {
     val data = MutableData()
 }
 
+fun Response.Body.Companion.bytes(bytes: ByteArray, contentType: String = "application/octet-stream") =
+    Response.Body(contentType) { RawByteSource(bytes) }
+
+fun Response.Body.Companion.text(
+    text: String,
+    charset: Charset = Charsets.UTF_8,
+    contentType: String = "text/plain; charset=${charset.name()}"
+) = bytes(text.toByteArray(charset), contentType)
+
+fun Response.Body.Companion.json(text: String, contentType: String = "application/json") =
+    text(text, contentType = contentType)
+
 /**
  * Convenience method for setting the body to a text value.
  */
-@Deprecated("We introduced the `Response.Body` class so you should set `body` directly instead.", ReplaceWith("body = Response.Body.text(text)"))
+@Deprecated("We introduced the `Response.Body` class so you should set `body` directly instead.", ReplaceWith("body = Response.Body.text(text)", "com.varabyte.kobweb.api.http.text"))
 fun Response.setBodyText(text: String) {
     body = Response.Body.text(text)
 }

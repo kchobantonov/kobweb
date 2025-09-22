@@ -28,11 +28,11 @@ suspend inline fun <reified T> Request.readBody(bodyDeserializer: Deserializatio
 /**
  * A serialization-aware convenience factory method that extends [Response.Body].
  */
-inline fun <reified T> Response.Body.Companion.encodeJson(body: T, bodySerializer: SerializationStrategy<T> = serializer()): Response.Body {
+inline fun <reified T> Response.Body.Companion.encode(body: T, bodySerializer: SerializationStrategy<T> = serializer()): Response.Body {
     return Response.Body.json(Json.encodeToString(bodySerializer, body))
 }
 
-@Deprecated("Use `body = Body.from(...)` instead", ReplaceWith("body = Body.from(body, bodySerializer)"))
+@Deprecated("Use `body = Body.from(...)` instead", ReplaceWith("body = Response.Body.encode(body, bodySerializer)", "com.varabyte.kobweb.api.http"))
 inline fun <reified T> Response.setBody(body: T, bodySerializer: SerializationStrategy<T> = serializer()) {
-    this.body = Response.Body.encodeJson(body, bodySerializer)
+    this.body = Response.Body.encode(body, bodySerializer)
 }
