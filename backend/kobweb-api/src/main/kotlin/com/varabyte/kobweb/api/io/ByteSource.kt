@@ -15,6 +15,11 @@ interface ByteSource : Closeable {
     }
 
     /**
+     * The length of this byte source, if fixed and known, or null otherwise.
+     */
+    val length: Long? get() = null
+
+    /**
      * Transfer up to [length] bytes, writing them into the target [buffer] array at the specified [offset].
      *
      * Every time read is called, this byte source is partially consumed. It is NOT safe to call this method from
@@ -85,6 +90,8 @@ fun ByteSource.toInputStream(): InputStream {
 class RawByteSource(private val bytes: ByteArray) : ByteSource {
     @Volatile private var closed = false
     private var pos = 0
+
+    override val length = bytes.size.toLong()
 
     override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int {
         if (closed) return -1

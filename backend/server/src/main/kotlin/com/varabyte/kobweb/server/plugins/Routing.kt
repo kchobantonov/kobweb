@@ -216,11 +216,13 @@ private suspend fun RoutingContext.handleApiCall(
                 call.response.headers.append(key, value)
             }
             val body = response.body?.takeIf { httpMethod != HttpMethod.HEAD }
+            val content = body?.openContent() ?: ByteSource.empty()
             call.respondBytesWriter(
                 status = HttpStatusCode.fromValue(response.status),
-                contentType = body?.contentType?.let { ContentType.parse(it) }
+                contentType = body?.contentType?.let { ContentType.parse(it) },
+                contentLength = content.length,
             ) {
-                (body?.openContent() ?: ByteSource.empty()).use { it.transferTo(this) }
+                content.use { it.transferTo(this) }
             }
         } catch (t: Throwable) {
             val fullErrorString = t.stackTraceToString()
