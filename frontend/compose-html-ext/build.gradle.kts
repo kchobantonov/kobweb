@@ -17,7 +17,7 @@ kotlin {
             api(projects.common.frameworkAnnotations) // api or else opt-in message won't be shown
             implementation(libs.compose.runtime)
             implementation(libs.compose.html.core)
-            api(libs.kotlinx.coroutines)
+            api(libs.kotlinx.coroutines.core)
             api(projects.frontend.browserExt) // If you want compose-html-ext, you also want browser-ext
         }
 

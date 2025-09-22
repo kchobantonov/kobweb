@@ -11,7 +11,7 @@ dependencies {
     // Expose kaml as an API dependency. If you use kobweb-common, many classes are associated with yaml files. Using
     // kobweb-common and your own different version of kaml can result in runtime exceptions, so just expose this one.
     api(libs.kaml)
-    implementation(libs.kotlinx.coroutines)
+    implementation(libs.kotlinx.coroutines.core)
 
     testImplementation(kotlin("test"))
     testImplementation(libs.truthish)

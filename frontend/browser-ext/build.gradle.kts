@@ -13,7 +13,7 @@ kotlin {
 
     sourceSets {
         jsMain.dependencies {
-            api(libs.kotlinx.coroutines)
+            api(libs.kotlinx.coroutines.core)
         }
 
         jsTest.dependencies {
