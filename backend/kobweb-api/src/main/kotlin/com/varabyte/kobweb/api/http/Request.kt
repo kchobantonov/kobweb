@@ -3,10 +3,10 @@ package com.varabyte.kobweb.api.http
 import com.varabyte.kobweb.api.ApiContext
 import com.varabyte.kobweb.api.data.Data
 import com.varabyte.kobweb.api.data.MutableData
+import com.varabyte.kobweb.api.http.io.parseCharsetFromContentType
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
-import com.varabyte.kobweb.api.io.ByteSource
-import com.varabyte.kobweb.api.io.parseCharsetFromContentType
-import com.varabyte.kobweb.api.io.readRemaining
+import com.varabyte.kobweb.io.ByteSource
+import com.varabyte.kobweb.io.readRemaining
 import java.nio.charset.Charset
 
 /**

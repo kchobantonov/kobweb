@@ -1,4 +1,4 @@
-package com.varabyte.kobweb.api.io
+package com.varabyte.kobweb.api.http.io
 
 import java.nio.charset.Charset
 import java.nio.charset.IllegalCharsetNameException

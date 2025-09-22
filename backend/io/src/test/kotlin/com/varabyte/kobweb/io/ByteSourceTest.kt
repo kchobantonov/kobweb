@@ -1,4 +1,4 @@
-package com.varabyte.kobweb.api.io
+package com.varabyte.kobweb.io
 
 import com.varabyte.truthish.assertThat
 import com.varabyte.truthish.assertThrows

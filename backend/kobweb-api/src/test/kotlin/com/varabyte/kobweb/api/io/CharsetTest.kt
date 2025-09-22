@@ -1,5 +1,6 @@
 package com.varabyte.kobweb.api.io
 
+import com.varabyte.kobweb.api.http.io.parseCharsetFromContentType
 import com.varabyte.truthish.assertThat
 import kotlin.test.Test
 

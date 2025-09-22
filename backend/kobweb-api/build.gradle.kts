@@ -7,11 +7,10 @@ group = "com.varabyte.kobweb"
 version = libs.versions.kobweb.get()
 
 dependencies {
+    api(projects.backend.io)
     implementation(projects.common.clientServerInternal)
-    implementation(libs.kotlinx.coroutines.core)
     testImplementation(kotlin("test"))
     testImplementation(libs.truthish)
-    implementation(libs.kotlinx.coroutines.test)
 }
 
 kobwebPublication {

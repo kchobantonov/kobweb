@@ -5,7 +5,6 @@ import com.varabyte.kobweb.api.event.EventDispatcher
 import com.varabyte.kobweb.api.http.HttpMethod
 import com.varabyte.kobweb.api.http.MutableRequest
 import com.varabyte.kobweb.api.http.Request
-import com.varabyte.kobweb.api.io.ByteSource
 import com.varabyte.kobweb.api.log.Logger
 import com.varabyte.kobweb.api.stream.ApiStream
 import com.varabyte.kobweb.api.stream.Stream
@@ -13,6 +12,7 @@ import com.varabyte.kobweb.api.stream.StreamEvent
 import com.varabyte.kobweb.api.stream.StreamId
 import com.varabyte.kobweb.common.error.KobwebException
 import com.varabyte.kobweb.common.text.prefixIfNot
+import com.varabyte.kobweb.io.ByteSource
 import com.varabyte.kobweb.project.conf.KobwebConf
 import com.varabyte.kobweb.project.conf.Server.Redirect
 import com.varabyte.kobweb.project.conf.Site

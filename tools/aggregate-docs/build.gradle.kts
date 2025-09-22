@@ -28,6 +28,7 @@ val includedProjects = setOf(
     projects.frontend.kobwebxMarkdown,
     projects.frontend.composeHtmlExt,
     projects.frontend.browserExt,
+    projects.backend.io,
     projects.backend.kobwebApi,
     projects.backend.serverPlugin,
     projects.tools.gradlePlugins.core,
