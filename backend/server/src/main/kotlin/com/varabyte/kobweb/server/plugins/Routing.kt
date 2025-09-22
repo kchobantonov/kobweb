@@ -12,6 +12,7 @@ import com.varabyte.kobweb.api.stream.StreamEvent
 import com.varabyte.kobweb.api.stream.StreamId
 import com.varabyte.kobweb.common.error.KobwebException
 import com.varabyte.kobweb.common.text.prefixIfNot
+import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
 import com.varabyte.kobweb.project.conf.KobwebConf
 import com.varabyte.kobweb.project.conf.Server.Redirect
@@ -216,6 +217,7 @@ private suspend fun RoutingContext.handleApiCall(
                 call.response.headers.append(key, value)
             }
             val body = response.body?.takeIf { httpMethod != HttpMethod.HEAD }
+            @OptIn(DelicateApi::class)
             val content = body?.openContent() ?: ByteSource.empty()
             call.respondBytesWriter(
                 status = HttpStatusCode.fromValue(response.status),

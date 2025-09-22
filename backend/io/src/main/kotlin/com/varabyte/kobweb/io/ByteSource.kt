@@ -9,6 +9,10 @@ import java.io.InputStream
 /**
  * A byte source represents a source of byte data that can only be consumed one time.
  */
+// Dev note: We created this class because we needed a suspendable async byte stream concept so we could abstract over
+// ktor's ByteReadChannel without exposing it to Kobweb users directly. We considered using kotlinx-io's `Source` class
+// but that is blocking. We may revisit the decision to use this class if kotlinx-io ever exposes their own async
+// classes. See also: https://github.com/Kotlin/kotlinx-io/issues/163
 interface ByteSource : Closeable {
     companion object {
         fun empty(): ByteSource = RawByteSource(byteArrayOf())

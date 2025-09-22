@@ -7,6 +7,7 @@ group = "com.varabyte.kobweb"
 version = libs.versions.kobweb.get()
 
 dependencies {
+    api(projects.common.frameworkAnnotations) // api or else opt-in message won't be shown
     api(projects.backend.io)
     implementation(projects.common.clientServerInternal)
     testImplementation(kotlin("test"))

@@ -5,6 +5,7 @@ import com.varabyte.kobweb.api.data.Data
 import com.varabyte.kobweb.api.data.MutableData
 import com.varabyte.kobweb.api.http.io.parseCharsetFromContentType
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
+import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
 import com.varabyte.kobweb.io.readRemaining
 import java.nio.charset.Charset
@@ -38,8 +39,7 @@ interface Request {
      * Note that its contents can only be consumed once, via the [ByteSource] returned by [openContent].
      */
     class Body(val contentType: String, private val provideContent: suspend () -> ByteSource) {
-        constructor(contentType: String, content: ByteSource) : this(contentType, { content })
-
+        @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level helper methods instead, like `body.bytes()` or `body.text()`.")
         suspend fun openContent() = provideContent()
     }
 
@@ -165,6 +165,7 @@ class MutableRequest(
  * @param limit If set and the size of the body is larger than it, throw an exception.
  */
 suspend fun Request.Body.bytes(limit: Int? = null): ByteArray {
+    @OptIn(DelicateApi::class)
     return openContent().use { it.readRemaining(limit) }
 }
 

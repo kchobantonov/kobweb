@@ -3,6 +3,7 @@ package com.varabyte.kobweb.api.http
 import com.varabyte.kobweb.api.ApiContext
 import com.varabyte.kobweb.api.data.MutableData
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
+import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
 import com.varabyte.kobweb.io.RawByteSource
 import java.nio.charset.Charset
@@ -47,8 +48,7 @@ class Response {
         @Suppress("RemoveEmptyClassBody") // Necessary to avoid confusion with constructor below
         companion object {} // Declared so we can extend it with factory methods
 
-        constructor(content: ByteSource, contentType: String = "application/octet-stream") : this(contentType, { content })
-
+        @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level factory methods instead, like `Response.Body.bytes()` or `Response.Body.text()`.")
         suspend fun openContent() = provideContent()
     }
 
