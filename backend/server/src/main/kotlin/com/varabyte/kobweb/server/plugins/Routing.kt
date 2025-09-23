@@ -140,28 +140,15 @@ private fun RequestConnectionPoint.toRequestConnectionDetails() = Request.Connec
 )
 
 private fun ByteReadChannel.toByteSource(): ByteSource = object : ByteSource {
-    @Volatile private var closed = false
-
     private val channel = this@toByteSource // For readability
 
     override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-        if (closed) return -1
         if (length == 0) return 0
-
-        while (true) {
-            // Ktor: may return >0, 0 (no data yet), or -1 (EOF)
-            val bytesRead = channel.readAvailable(buffer, offset, length)
-            if (bytesRead > 0) return bytesRead
-            if (bytesRead < 0) return -1
-            if (channel.isClosedForRead) return -1
-            channel.awaitContent()
-        }
+        return channel.readAvailable(buffer, offset, length)
     }
 
     override fun close() {
-        if (closed) return
-        closed = true
-        runCatching { channel.cancel() }
+        channel.cancel()
     }
 }
 
