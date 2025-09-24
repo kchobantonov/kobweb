@@ -38,9 +38,46 @@ interface Request {
      *
      * Note that its contents can only be consumed once, via the [ByteSource] returned by [openContent].
      */
-    class Body(val contentType: String, private val provideContent: suspend () -> ByteSource) {
-        @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level helper methods instead, like `body.bytes()` or `body.text()`.")
-        suspend fun openContent() = provideContent()
+    class Body private constructor(
+        override val contentType: String,
+        private val contentProvider: ContentProvider,
+        override val contentLength: Long? = null,
+    ) : ContentSource {
+        companion object {
+            fun multipart(contentType: String, contentLength: Long? = null, provideMultipart: suspend () -> Multipart) =
+                Body(contentType, ContentProvider.Multi(provideMultipart), contentLength)
+        }
+
+        private sealed class ContentProvider {
+            class Single(val provide: suspend () -> ByteSource) : ContentProvider()
+            class Multi(val provide: suspend () -> Multipart) : ContentProvider()
+        }
+
+        constructor(contentType: String, contentLength: Long? = null, provideContent: suspend () -> ByteSource) : this(contentType, ContentProvider.Single(provideContent), contentLength)
+
+        init {
+            val isMultiPartContentType = Multipart.isMultipartContentType(contentType)
+            require((contentProvider is ContentProvider.Single) && !isMultiPartContentType || (contentProvider is ContentProvider.Multi) && isMultiPartContentType) {
+                buildString {
+                    append("Registered a ")
+                    if (contentProvider is ContentProvider.Single) {
+                        append("non-")
+                    }
+                    append("multipart request body with incompatible content type \"$contentType\".")
+                }
+            }
+        }
+
+        @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level helper methods instead, like `bytes()` or `text()`.")
+        override suspend fun openContent(): ByteSource {
+            return (contentProvider as? ContentProvider.Single)?.provide()
+                ?: error("Cannot call openContent() on a request with a multi-part body. Use `multipart()` instead.")
+        }
+
+        suspend fun multipart(): Multipart {
+            return (contentProvider as? ContentProvider.Multi)?.provide()
+                ?: error("Cannot call multipart() on a request with a single-part body.")
+        }
     }
 
     /** Information about the connection that carried the request. */
@@ -157,25 +194,6 @@ class MutableRequest(
         .toMutableMap()
 
     override val cookies: MutableMap<String, String> = cookies.toMutableMap()
-}
-
-/**
- * Convenience method to convert a body's content into a raw byte array
- *
- * @param limit If set and the size of the body is larger than it, throw an exception.
- */
-suspend fun Request.Body.bytes(limit: Int? = null): ByteArray {
-    @OptIn(DelicateApi::class)
-    return openContent().use { it.readRemaining(limit) }
-}
-
-/**
- * Convenience method to convert a body's content into a UTF-8 string.
- *
- * @param limit If set and the size of the body is larger than it, throw an exception.
- */
-suspend fun Request.Body.text(charset: Charset = contentType.parseCharsetFromContentType(), limit: Int? = null): String {
-    return bytes(limit).toString(charset)
 }
 
 @Deprecated("Use `req.body?.text()` instead", ReplaceWith("body?.text()"))

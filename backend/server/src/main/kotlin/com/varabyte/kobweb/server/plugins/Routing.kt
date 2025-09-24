@@ -2,7 +2,9 @@ package com.varabyte.kobweb.server.plugins
 
 import com.varabyte.kobweb.api.Apis
 import com.varabyte.kobweb.api.event.EventDispatcher
+import com.varabyte.kobweb.api.http.ContentDisposition
 import com.varabyte.kobweb.api.http.HttpMethod
+import com.varabyte.kobweb.api.http.Multipart
 import com.varabyte.kobweb.api.http.MutableRequest
 import com.varabyte.kobweb.api.http.Request
 import com.varabyte.kobweb.api.log.Logger
@@ -14,6 +16,7 @@ import com.varabyte.kobweb.common.error.KobwebException
 import com.varabyte.kobweb.common.text.prefixIfNot
 import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
+import com.varabyte.kobweb.io.RawByteSource
 import com.varabyte.kobweb.project.conf.KobwebConf
 import com.varabyte.kobweb.project.conf.Server.Redirect
 import com.varabyte.kobweb.project.conf.Site
@@ -26,6 +29,9 @@ import com.varabyte.kobweb.streams.StreamMessage
 import com.varabyte.kobweb.streams.StreamMessage.Payload
 import com.varabyte.kobweb.util.text.PatternMapper
 import io.ktor.http.*
+import io.ktor.http.content.MultiPartData
+import io.ktor.http.content.PartData
+import io.ktor.http.content.forEachPart
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
 import io.ktor.server.request.*
@@ -37,6 +43,8 @@ import io.ktor.util.*
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.ByteWriteChannel
 import io.ktor.utils.io.cancel
+import io.ktor.utils.io.core.Input
+import io.ktor.utils.io.core.readAvailable
 import io.ktor.utils.io.readAvailable
 import io.ktor.utils.io.writeFully
 import io.ktor.websocket.*
@@ -44,6 +52,8 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -139,16 +149,66 @@ private fun RequestConnectionPoint.toRequestConnectionDetails() = Request.Connec
     serverPort = serverPort,
 )
 
+private fun Input.toByteSource(): ByteSource = object : ByteSource {
+    private val input = this@toByteSource
+
+    override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        return input.readAvailable(buffer, offset, length)
+    }
+
+    override fun close() {
+        input.close()
+    }
+}
+
 private fun ByteReadChannel.toByteSource(): ByteSource = object : ByteSource {
     private val channel = this@toByteSource // For readability
 
     override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-        if (length == 0) return 0
         return channel.readAvailable(buffer, offset, length)
     }
 
     override fun close() {
         channel.cancel()
+    }
+}
+
+private fun PartData.toKobwebPart(): Multipart.Part = object : Multipart.Part {
+    private val partData = this@toKobwebPart
+
+    override val name: String? = partData.name
+    override val contentType = partData.contentType?.toString()
+    override val headers: Map<String, List<String>> = partData.headers.entries().associate { it.key to it.value }
+
+    override val contentDisposition: ContentDisposition? = partData.contentDisposition?.let { cd ->
+        ContentDisposition(cd.disposition, cd.parameters.associate { it.name to it.value })
+    }
+
+    override val extras: Multipart.Extras? = when(partData) {
+        is PartData.FileItem -> Multipart.Extras.File(partData.originalFileName)
+        else -> null
+    }
+
+    override fun close() {
+        partData.dispose()
+    }
+
+    @Suppress("OPT_IN_OVERRIDE")
+    override suspend fun openContent(): ByteSource {
+        return when (partData) {
+            is PartData.BinaryChannelItem -> partData.provider().toByteSource()
+            is PartData.BinaryItem -> partData.provider().toByteSource()
+            is PartData.FileItem -> partData.provider().toByteSource()
+            is PartData.FormItem -> RawByteSource(partData.value.toByteArray(partData.contentType?.charset() ?: Charsets.UTF_8))
+        }
+    }
+}
+
+private fun MultiPartData.toKobwebMultipart(): Multipart = object : Multipart {
+    private val multipartData = this@toKobwebMultipart
+
+    override val parts: Flow<Multipart.Part> = flow {
+        multipartData.forEachPart { partData -> emit(partData.toKobwebPart()) }
     }
 }
 
@@ -175,7 +235,15 @@ private suspend fun RoutingContext.handleApiCall(
     call.parameters.getAll(KOBWEB_PARAMS)?.joinToString("/")?.let { pathStr ->
         val body: Request.Body? = when (httpMethod) {
             HttpMethod.PATCH, HttpMethod.POST, HttpMethod.PUT -> {
-                Request.Body(call.request.contentType().toString()) { call.receiveChannel().toByteSource() }
+                val contentType = call.request.contentType().toString()
+                if (Multipart.isMultipartContentType(contentType)) {
+                    Request.Body.multipart(
+                        contentType,
+                        call.request.contentLength()
+                    ) { call.receiveMultipart().toKobwebMultipart() }
+                } else {
+                    Request.Body(contentType, call.request.contentLength()) { call.receiveChannel().toByteSource() }
+                }
             }
 
             else -> null

@@ -5,7 +5,9 @@ import java.nio.charset.IllegalCharsetNameException
 import java.nio.charset.UnsupportedCharsetException
 
 // See if the charset was encoded inside the content type string, e.g. "plain/text; charset=utf-8"
-internal fun String.parseCharsetFromContentType(defaultCharset: Charset = Charsets.UTF_8): Charset {
+internal fun String?.parseCharsetFromContentType(defaultCharset: Charset = Charsets.UTF_8): Charset {
+    if (this == null) return defaultCharset
+
     val contentType = this // for readability
     // case-insensitive search for `charset=...` OR `charset="..."`, skipping over whitespace
     val regex = Regex("""(?i)\s*charset\s*=\s*(?:"([^"]+)"|([^;\s"]+))""")
