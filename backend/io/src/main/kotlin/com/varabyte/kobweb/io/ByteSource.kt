@@ -88,6 +88,19 @@ fun ByteSource.toInputStream(): InputStream {
     }
 }
 
+fun InputStream.toByteSource(): ByteSource {
+    val inputStream = this
+    return object : ByteSource {
+        override suspend fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+            return inputStream.read(buffer, offset, length)
+        }
+
+        override fun close() {
+            inputStream.close()
+        }
+    }
+}
+
 /**
  * A [ByteSource] that wraps a simple [ByteArray] buffer.
  */

@@ -37,6 +37,14 @@ class ContentDisposition(val disposition: String, val parameters: Map<String, St
 }
 
 /**
+ * Convert this byte source into an [InputStream].
+ */
+suspend fun ContentSource.stream(): InputStream {
+    @OptIn(DelicateApi::class)
+    return openContent().toInputStream()
+}
+
+/**
  * Convenience method to convert a body's content into a raw byte array
  *
  * @param limit If set and the size of the body is larger than it, throw an exception.

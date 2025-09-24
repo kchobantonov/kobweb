@@ -6,6 +6,8 @@ import com.varabyte.kobweb.api.intercept.ApiInterceptor
 import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
 import com.varabyte.kobweb.io.RawByteSource
+import com.varabyte.kobweb.io.toByteSource
+import java.io.InputStream
 import java.nio.charset.Charset
 
 private val VALID_REDIRECT_STATUS_CODES = setOf(301, 302, 303, 307, 308)
@@ -87,6 +89,9 @@ class Response {
      */
     val data = MutableData()
 }
+
+fun Response.Body.Companion.stream(inputStream: InputStream, contentType: String = "application/octet-stream") =
+    Response.Body(contentType) { inputStream.toByteSource() }
 
 fun Response.Body.Companion.bytes(bytes: ByteArray, contentType: String = "application/octet-stream") =
     Response.Body(contentType) { RawByteSource(bytes) }
