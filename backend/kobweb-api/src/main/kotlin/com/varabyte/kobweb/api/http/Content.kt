@@ -5,18 +5,47 @@ import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
 import com.varabyte.kobweb.io.readRemaining
 import com.varabyte.kobweb.io.toInputStream
+import java.io.Closeable
 import java.io.InputStream
 import java.nio.charset.Charset
+import kotlin.ByteArray
+import kotlin.Int
+import kotlin.Long
+import kotlin.OptIn
+import kotlin.String
+import kotlin.Suppress
+import kotlin.io.use
 
 interface ContentSource {
+    /**
+     * The [content type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) that describes the bytes provided by [openContent].
+     */
     val contentType: String?
+    /**
+     * The size, in bytes, of the content, if known / provided ahead of time (or null otherwise).
+     */
     val contentLength: Long?
 
+    /**
+     * Open an async stream up that provides the content.
+     *
+     * The returned [ByteSource] is [Closeable], so either call [use] on it, e.g. `body?.openContent()?.use { ... }`,
+     * or otherwise close it when you're done with it, which will release any resources associated with file or network
+     * streams.
+     */
     @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level helper methods instead, like `bytes()` or `text()`.")
     suspend fun openContent(): ByteSource
 }
 
+/**
+ * Extra information about content should be treated / displayed.
+ *
+ * @see <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Disposition">Content-Disposition</a>
+ */
 class ContentDisposition(val disposition: String, val parameters: Map<String, String> = mapOf()) {
+    /**
+     * Convenience property for the name parameter, which is commonly set and can be used to identify a specific part.
+     */
     val name: String? get() = parameters[Parameters.Name]
 
     /**
