@@ -38,17 +38,21 @@ class Response {
      * You can construct a body directly if you are comfortable working with [ByteSource], but several helper factory
      * methods are provided, such as [bytes] and [text].
      */
-    class Body(
-        /**
-         * The content type of this body, e.g. "image/jpeg" or "application/json". Can include parameters.
-         *
-         * @see <a href="https://www.w3.org/Protocols/rfc1341/4_Content-Type.html">The Content-Type Header Field</a>
-         */
-        val contentType: String = "application/octet-stream",
+    class Body private constructor(
+        override val contentType: String = "application/octet-stream",
         private val provideContent: suspend () -> ByteSource,
-    ) {
-        @Suppress("RemoveEmptyClassBody") // Necessary to avoid confusion with constructor below
-        companion object {} // Declared so we can extend it with factory methods
+    ) : BodyDetails {
+        override val contentLength: Long? get() = null
+
+        companion object : BodyFactory<Body> {
+            override fun invoke(
+                contentType: String,
+                provideContent: suspend () -> ByteSource
+            ): Body {
+                return Body(contentType, provideContent)
+            }
+
+        }
 
         @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level factory methods instead, like `Response.Body.bytes()` or `Response.Body.text()`.")
         suspend fun openContent() = provideContent()
@@ -89,21 +93,6 @@ class Response {
      */
     val data = MutableData()
 }
-
-fun Response.Body.Companion.stream(inputStream: InputStream, contentType: String = "application/octet-stream") =
-    Response.Body(contentType) { inputStream.toByteSource() }
-
-fun Response.Body.Companion.bytes(bytes: ByteArray, contentType: String = "application/octet-stream") =
-    Response.Body(contentType) { RawByteSource(bytes) }
-
-fun Response.Body.Companion.text(
-    text: String,
-    charset: Charset = Charsets.UTF_8,
-    contentType: String = "text/plain; charset=${charset.name()}"
-) = bytes(text.toByteArray(charset), contentType)
-
-fun Response.Body.Companion.json(text: String, contentType: String = "application/json") =
-    text(text, contentType = contentType)
 
 /**
  * Convenience method for setting the body to a text value.

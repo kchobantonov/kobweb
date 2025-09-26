@@ -3,12 +3,9 @@ package com.varabyte.kobweb.api.http
 import com.varabyte.kobweb.api.ApiContext
 import com.varabyte.kobweb.api.data.Data
 import com.varabyte.kobweb.api.data.MutableData
-import com.varabyte.kobweb.api.http.io.parseCharsetFromContentType
 import com.varabyte.kobweb.api.intercept.ApiInterceptor
 import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
-import com.varabyte.kobweb.io.readRemaining
-import java.nio.charset.Charset
 
 /**
  * Information passed into an API endpoint from the client.
@@ -43,9 +40,12 @@ interface Request {
         private val contentProvider: ContentProvider,
         override val contentLength: Long? = null,
     ) : ContentSource {
-        companion object {
+        companion object : BodyFactory<Body> {
             fun multipart(contentType: String, contentLength: Long? = null, provideMultipart: suspend () -> Multipart) =
                 Body(contentType, ContentProvider.Multi(provideMultipart), contentLength)
+
+            override fun invoke(contentType: String, provideContent: suspend () -> ByteSource) =
+                Body(contentType, ContentProvider.Single(provideContent))
         }
 
         private sealed class ContentProvider {

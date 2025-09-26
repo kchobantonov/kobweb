@@ -16,16 +16,25 @@ import kotlin.String
 import kotlin.Suppress
 import kotlin.io.use
 
-interface ContentSource {
+/** Interface for a body class that exposes metadata about its content. */
+interface BodyDetails {
     /**
-     * The [content type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) that describes the bytes provided by [openContent].
+     * The [content type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) that describes the bytes owned by this body.
      */
     val contentType: String?
     /**
      * The size, in bytes, of the content, if known / provided ahead of time (or null otherwise).
      */
     val contentLength: Long?
+}
 
+/**
+ * Interface for a body class that allows users to consume its body content.
+ *
+ * Users may want to extend this interface to support their own custom body type. If you extend this interface, you
+ * should *also* create an associated method on top of [BodyFactory].
+ */
+interface ContentSource : BodyDetails {
     /**
      * Open an async stream up that provides the content.
      *
