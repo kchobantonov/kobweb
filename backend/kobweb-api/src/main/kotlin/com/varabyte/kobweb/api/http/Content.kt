@@ -1,5 +1,6 @@
 package com.varabyte.kobweb.api.http
 
+import com.varabyte.kobweb.api.http.Body.Companion.multipart
 import com.varabyte.kobweb.api.http.io.parseCharsetFromContentType
 import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
@@ -8,16 +9,13 @@ import com.varabyte.kobweb.io.toInputStream
 import java.io.Closeable
 import java.io.InputStream
 import java.nio.charset.Charset
-import kotlin.ByteArray
-import kotlin.Int
-import kotlin.Long
-import kotlin.OptIn
-import kotlin.String
-import kotlin.Suppress
 import kotlin.io.use
+import kotlin.use
 
-/** Interface for a body class that exposes metadata about its content. */
-interface BodyDetails {
+/**
+ * Interface for a body class that allows users to consume its body content.
+ */
+interface ContentSource {
     /**
      * The [content type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Type) that describes the bytes owned by this body.
      */
@@ -26,24 +24,20 @@ interface BodyDetails {
      * The size, in bytes, of the content, if known / provided ahead of time (or null otherwise).
      */
     val contentLength: Long?
-}
 
-/**
- * Interface for a body class that allows users to consume its body content.
- *
- * Users may want to extend this interface to support their own custom body type. If you extend this interface, you
- * should *also* create an associated method on top of [BodyFactory].
- */
-interface ContentSource : BodyDetails {
     /**
-     * Open an async stream up that provides the content.
+     * Open an async stream up that consumes the content of this body.
      *
-     * The returned [ByteSource] is [Closeable], so either call [use] on it, e.g. `body?.openContent()?.use { ... }`,
+     * IMPORTANT: You can only call this once! Attempting to call this a second time will throw.
+     *
+     * The returned [ByteSource] is [Closeable], so either call [use] on it, e.g. `body?.consumeContent()?.use { ... }`,
      * or otherwise close it when you're done with it, which will release any resources associated with file or network
      * streams.
+     *
+     * Note that [multipart bodies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission) should not be consumed directly; instead, call [multipart].
      */
-    @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level helper methods instead, like `bytes()` or `text()`.")
-    suspend fun openContent(): ByteSource
+    @DelicateApi("It is fine to call this method, but note that Kobweb had to create a custom I/O class that we are exposing here (ByteSource) because kotlinx-io doesn't have an async byte stream concept. If this ever changes in the future, we may decide migrating to it. If possible, consider using higher level helper methods instead, like `bytes()`, `text()`, or `stream()`, or file an issue with the team asking them to provide a more relevant adapter.")
+    suspend fun consumeContent(): ByteSource
 }
 
 /**
@@ -74,12 +68,16 @@ class ContentDisposition(val disposition: String, val parameters: Map<String, St
     }
 }
 
+// region ContentSource content query helper methods
+
+// If you add a new method here, create an associated method on Body.Companion
+
 /**
  * Convert this byte source into an [InputStream].
  */
 suspend fun ContentSource.stream(): InputStream {
     @OptIn(DelicateApi::class)
-    return openContent().toInputStream()
+    return consumeContent().toInputStream()
 }
 
 /**
@@ -89,7 +87,7 @@ suspend fun ContentSource.stream(): InputStream {
  */
 suspend fun ContentSource.bytes(limit: Int? = null): ByteArray {
     @OptIn(DelicateApi::class)
-    return openContent().use { it.readRemaining(limit) }
+    return consumeContent().use { it.readRemaining(limit) }
 }
 
 /**

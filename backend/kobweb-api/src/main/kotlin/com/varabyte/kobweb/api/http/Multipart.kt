@@ -58,6 +58,8 @@ interface Multipart {
      * You can either collect it directly or use [forEachPart] which is provided as a convenience method.
      *
      * If you collect it yourself, be sure to [close][Part.close] each part when you're done with it.
+     *
+     * You should not attempt to collect parts more than once; collecting them the first time will consume the parts.
      */
     val parts: Flow<Part>
 }

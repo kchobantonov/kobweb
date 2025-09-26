@@ -2,6 +2,7 @@ package com.varabyte.kobweb.server.plugins
 
 import com.varabyte.kobweb.api.Apis
 import com.varabyte.kobweb.api.event.EventDispatcher
+import com.varabyte.kobweb.api.http.Body
 import com.varabyte.kobweb.api.http.ContentDisposition
 import com.varabyte.kobweb.api.http.HttpMethod
 import com.varabyte.kobweb.api.http.Multipart
@@ -194,7 +195,7 @@ private fun PartData.toKobwebPart(): Multipart.Part = object : Multipart.Part {
     }
 
     @Suppress("OPT_IN_OVERRIDE")
-    override suspend fun openContent(): ByteSource {
+    override suspend fun consumeContent(): ByteSource {
         return when (partData) {
             is PartData.BinaryChannelItem -> partData.provider().toByteSource()
             is PartData.BinaryItem -> partData.provider().toByteSource()
@@ -233,16 +234,16 @@ private suspend fun RoutingContext.handleApiCall(
     logger: Logger,
 ) {
     call.parameters.getAll(KOBWEB_PARAMS)?.joinToString("/")?.let { pathStr ->
-        val body: Request.Body? = when (httpMethod) {
+        val body: Body? = when (httpMethod) {
             HttpMethod.PATCH, HttpMethod.POST, HttpMethod.PUT -> {
                 val contentType = call.request.contentType().toString()
                 if (Multipart.isMultipartContentType(contentType)) {
-                    Request.Body.multipart(
+                    Body.multipart(
                         contentType,
                         call.request.contentLength()
                     ) { call.receiveMultipart().toKobwebMultipart() }
                 } else {
-                    Request.Body(contentType, call.request.contentLength()) { call.receiveChannel().toByteSource() }
+                    Body(contentType, call.request.contentLength()) { call.receiveChannel().toByteSource() }
                 }
             }
 
@@ -273,7 +274,7 @@ private suspend fun RoutingContext.handleApiCall(
             }
             val body = response.body?.takeIf { httpMethod != HttpMethod.HEAD }
             @OptIn(DelicateApi::class)
-            val content = body?.openContent() ?: ByteSource.empty()
+            val content = body?.consumeContent() ?: ByteSource.empty()
             call.respondBytesWriter(
                 status = HttpStatusCode.fromValue(response.status),
                 contentType = body?.contentType?.let { ContentType.parse(it) },

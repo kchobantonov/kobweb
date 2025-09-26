@@ -23,41 +23,13 @@ private const val API_PREFIX_WITH_TRAILING_SLASH = "$API_PREFIX/"
  * ```
  * @Api
  * fun demo(ctx: ApiContext) {
- *   ctx.res.body = Response.Body.text("This is how you send text back to the client")
+ *   ctx.res.body = Body.text("This is how you send text back to the client")
  * }
  * ```
  *
  * @see Request
  */
 class Response {
-    /**
-     * The body of the response.
-     *
-     * Note that its contents can only be consumed once, via the [ByteSource] returned by [openContent].
-     *
-     * You can construct a body directly if you are comfortable working with [ByteSource], but several helper factory
-     * methods are provided, such as [bytes] and [text].
-     */
-    class Body private constructor(
-        override val contentType: String = "application/octet-stream",
-        private val provideContent: suspend () -> ByteSource,
-    ) : BodyDetails {
-        override val contentLength: Long? get() = null
-
-        companion object : BodyFactory<Body> {
-            override fun invoke(
-                contentType: String,
-                provideContent: suspend () -> ByteSource
-            ): Body {
-                return Body(contentType, provideContent)
-            }
-
-        }
-
-        @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level factory methods instead, like `Response.Body.bytes()` or `Response.Body.text()`.")
-        suspend fun openContent() = provideContent()
-    }
-
     private var _status: Int? = null
 
     /** @see <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Status">HTTP response status codes</a> */
@@ -97,9 +69,9 @@ class Response {
 /**
  * Convenience method for setting the body to a text value.
  */
-@Deprecated("We introduced the `Response.Body` class so you should set `body` directly instead.", ReplaceWith("body = Response.Body.text(text)", "com.varabyte.kobweb.api.http.text"))
+@Deprecated("We are migrating to creating body instances using `Body` factory methods instead.", ReplaceWith("body = Body.text(text)", "com.varabyte.kobweb.api.http.text"))
 fun Response.setBodyText(text: String) {
-    body = Response.Body.text(text)
+    body = Body.text(text)
 }
 
 /**

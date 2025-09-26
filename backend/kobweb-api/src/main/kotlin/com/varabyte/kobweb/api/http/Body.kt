@@ -1,5 +1,6 @@
 package com.varabyte.kobweb.api.http
 
+import com.varabyte.kobweb.framework.annotations.DelicateApi
 import com.varabyte.kobweb.io.ByteSource
 import com.varabyte.kobweb.io.RawByteSource
 import com.varabyte.kobweb.io.toByteSource
@@ -7,29 +8,84 @@ import java.io.InputStream
 import java.nio.charset.Charset
 
 /**
- * Interface to tag body companion objects with, extending them with helpful factory methods to create bodies with.
+ * The body of a request or response.
  *
- * If a user wants to add their own custom body type, they should extend this class
- * (`fun <B> BodyFactory<B>.create(...)`), internally delegating to [invoke] or [bytes] (the latter may be more
- * convenient for when you're sure you can fit the whole content in memory).
- *
- * If you extend this interface, you should *also* create an associated method on top of [ContentSource].
+ * Note that its contents can only be consumed once, via the [ByteSource] returned by [consumeContent].
  */
-interface BodyFactory<B> {
-    fun invoke(contentType: String = "application/octet-stream", provideContent: suspend () -> ByteSource): B
+class Body private constructor(
+    override val contentType: String,
+    private val contentProvider: ContentProvider,
+    override val contentLength: Long? = null,
+) : ContentSource {
+    companion object  {
+        fun multipart(contentType: String, contentLength: Long? = null, provideMultipart: suspend () -> Multipart) =
+            Body(contentType, ContentProvider.Multi(provideMultipart), contentLength)
+
+        operator fun invoke(contentType: String, contentLength: Long? = null, provideContent: suspend () -> ByteSource) =
+            Body(contentType, ContentProvider.Single(provideContent), contentLength)
+    }
+
+    private sealed class ContentProvider {
+        class Single(val provide: suspend () -> ByteSource) : ContentProvider()
+        class Multi(val provide: suspend () -> Multipart) : ContentProvider()
+    }
+
+    init {
+        val isMultiPartContentType = Multipart.isMultipartContentType(contentType)
+        require((contentProvider is ContentProvider.Single) && !isMultiPartContentType || (contentProvider is ContentProvider.Multi) && isMultiPartContentType) {
+            buildString {
+                append("Registered a ")
+                if (contentProvider is ContentProvider.Single) {
+                    append("non-")
+                }
+                append("multipart request body with incompatible content type \"$contentType\".")
+            }
+        }
+    }
+
+    private var consumed = false
+
+    private fun assertNotConsumed() {
+        check(!consumed) { "Cannot consume body content more than once." }
+        consumed = true
+    }
+
+    @DelicateApi("It is fine to call this method, but note that Kobweb had to create a custom I/O class here (ByteSource) because kotlinx-io doesn't have an async byte stream concept. If this ever changes in the future, we may decide migrating to it. If possible, consider using higher level helper methods instead, like `bytes()`, `text()`, or `stream()`, or file an issue with the team asking them to provide a more relevant adapter.")
+    override suspend fun consumeContent(): ByteSource {
+        assertNotConsumed()
+        return (contentProvider as? ContentProvider.Single)?.provide()
+            ?: error("Cannot call consumeContent() on a request with a multi-part body. Use `multipart()` instead.")
+    }
+
+    /**
+     * Fetch details for this body's content IF its content is split up into [multipart sections](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Methods/POST#multipart_form_submission)
+     *
+     * IMPORTANT: You can only call this once! Attempting to call this a second time will throw.
+     */
+    suspend fun multipart(): Multipart {
+        assertNotConsumed()
+        return (contentProvider as? ContentProvider.Multi)?.provide()
+            ?: error("Cannot call multipart() on a request with a single-part body.")
+    }
 }
 
-fun <B> BodyFactory<B>.stream(inputStream: InputStream, contentType: String = "application/octet-stream") =
+// region Body factory helper methods
+
+// If you add a new method here, create an associated method on ContentSource (in Content.kt)
+
+fun Body.Companion.stream(inputStream: InputStream, contentType: String = "application/octet-stream") =
     invoke(contentType) { inputStream.toByteSource() }
 
-fun <B> BodyFactory<B>.bytes(bytes: ByteArray, contentType: String = "application/octet-stream") =
+fun Body.Companion.bytes(bytes: ByteArray, contentType: String = "application/octet-stream") =
     invoke(contentType) { RawByteSource(bytes) }
 
-fun <B> BodyFactory<B>.text(
+fun Body.Companion.text(
     text: String,
     charset: Charset = Charsets.UTF_8,
     contentType: String = "text/plain; charset=${charset.name()}"
 ) = bytes(text.toByteArray(charset), contentType)
 
-fun <B> BodyFactory<B>.json(text: String, contentType: String = "application/json") =
+fun Body.Companion.json(text: String, contentType: String = "application/json") =
     text(text, contentType = contentType)
+
+// endregion

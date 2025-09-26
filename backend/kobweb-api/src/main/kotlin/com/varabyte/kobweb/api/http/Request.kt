@@ -18,11 +18,11 @@ import com.varabyte.kobweb.io.ByteSource
  * suspend fun echo(ctx: ApiContext) {
  *   val msg = ctx.req.params["msg"]
  *   if (msg != null) {
- *     ctx.res.body = Response.Body.text("Received message: $msg")
+ *     ctx.res.body = Body.text("Received message: $msg")
  *   }
  *   else {
  *     ctx.res.status = 400
- *     ctx.res.body = Response.Body.text("Missing: required parameter 'msg'")
+ *     ctx.res.body = Body.text("Missing: required parameter 'msg'")
  *   }
  * }
  * ```
@@ -30,56 +30,6 @@ import com.varabyte.kobweb.io.ByteSource
  * @see Response
  */
 interface Request {
-    /**
-     * The body of the request.
-     *
-     * Note that its contents can only be consumed once, via the [ByteSource] returned by [openContent].
-     */
-    class Body private constructor(
-        override val contentType: String,
-        private val contentProvider: ContentProvider,
-        override val contentLength: Long? = null,
-    ) : ContentSource {
-        companion object : BodyFactory<Body> {
-            fun multipart(contentType: String, contentLength: Long? = null, provideMultipart: suspend () -> Multipart) =
-                Body(contentType, ContentProvider.Multi(provideMultipart), contentLength)
-
-            override fun invoke(contentType: String, provideContent: suspend () -> ByteSource) =
-                Body(contentType, ContentProvider.Single(provideContent))
-        }
-
-        private sealed class ContentProvider {
-            class Single(val provide: suspend () -> ByteSource) : ContentProvider()
-            class Multi(val provide: suspend () -> Multipart) : ContentProvider()
-        }
-
-        constructor(contentType: String, contentLength: Long? = null, provideContent: suspend () -> ByteSource) : this(contentType, ContentProvider.Single(provideContent), contentLength)
-
-        init {
-            val isMultiPartContentType = Multipart.isMultipartContentType(contentType)
-            require((contentProvider is ContentProvider.Single) && !isMultiPartContentType || (contentProvider is ContentProvider.Multi) && isMultiPartContentType) {
-                buildString {
-                    append("Registered a ")
-                    if (contentProvider is ContentProvider.Single) {
-                        append("non-")
-                    }
-                    append("multipart request body with incompatible content type \"$contentType\".")
-                }
-            }
-        }
-
-        @DelicateApi("Kobweb created a custom I/O class because kotlinx-io doesn't have an async byte stream concept, but we may migrate over at some point in the future if this ever changes. Consider using higher level helper methods instead, like `bytes()` or `text()`.")
-        override suspend fun openContent(): ByteSource {
-            return (contentProvider as? ContentProvider.Single)?.provide()
-                ?: error("Cannot call openContent() on a request with a multi-part body. Use `multipart()` instead.")
-        }
-
-        suspend fun multipart(): Multipart {
-            return (contentProvider as? ContentProvider.Multi)?.provide()
-                ?: error("Cannot call multipart() on a request with a single-part body.")
-        }
-    }
-
     /** Information about the connection that carried the request. */
     val connection: Connection
     /** The type of http method this call was sent with. */
@@ -173,7 +123,7 @@ class MutableRequest(
     queryParams: Map<String, String>,
     headers: Map<String, List<String>>,
     cookies: Map<String, String>,
-    override var body: Request.Body?,
+    override var body: Body?,
     override val data: MutableData = MutableData(),
 ) : Request {
     constructor(request: Request) : this(
