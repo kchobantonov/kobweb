@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.targets.jvm.KotlinJvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -34,16 +35,16 @@ subprojects {
     // Set jdk-release for all compilation targets. See also: https://jakewharton.com/kotlins-jdk-release-compatibility-flag/
     // (Short version: resolves ambiguity Kotlin extension methods and new methods added into more recent JDKs)
 
-    plugins.withId("org.jetbrains.kotlin.multiplatform") {
-        extensions.findByType(KotlinMultiplatformExtension::class.java)?.let { kotlin ->
-            kotlin.targets.withType<KotlinJvmTarget> {
+    pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+        configure<KotlinMultiplatformExtension> {
+            targets.withType<KotlinJvmTarget>().configureEach {
                 compilerOptions.freeCompilerArgs.add("-Xjdk-release=${jvmTarget.target}")
             }
         }
     }
 
-    plugins.withId("org.jetbrains.kotlin.jvm") {
-        project.tasks.withType(KotlinCompile::class.java).configureEach {
+    pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+        configure<KotlinJvmExtension> {
             compilerOptions.freeCompilerArgs.add("-Xjdk-release=${jvmTarget.target}")
         }
     }
