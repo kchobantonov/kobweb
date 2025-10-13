@@ -33,7 +33,6 @@ import com.varabyte.kobweb.project.backend.InitApiEntry
 import com.varabyte.kobweb.project.backend.assertValid
 import com.varabyte.kobweb.project.common.PackageUtils
 import com.varabyte.kobweb.project.frontend.FrontendData
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class BackendProcessor(
@@ -153,8 +152,8 @@ class BackendProcessor(
                 ?.also { fileDependencies.add(annotatedFun.containingFile!!) }
         }
         val apiStreams = apiStreamsDeclarations.map { property ->
-            val routeOverride = property.getAnnotationsByName(API_FQN)
-                .firstNotNullOfOrNull { it.arguments.firstOrNull()?.value?.toString() }
+            val routeOverride = property.getAnnotationsByName(API_FQN).firstOrNull()?.getArgumentValue()
+                ?.takeIf { it.isNotBlank() }
 
             val resolvedRoute = processRoute(
                 packageRoot = qualifiedApiPackage,
