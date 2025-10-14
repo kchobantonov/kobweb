@@ -30,9 +30,7 @@ import com.varabyte.kobweb.streams.StreamMessage
 import com.varabyte.kobweb.streams.StreamMessage.Payload
 import com.varabyte.kobweb.util.text.PatternMapper
 import io.ktor.http.*
-import io.ktor.http.content.MultiPartData
-import io.ktor.http.content.PartData
-import io.ktor.http.content.forEachPart
+import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.plugins.*
 import io.ktor.server.request.*
@@ -41,20 +39,14 @@ import io.ktor.server.routing.*
 import io.ktor.server.sse.*
 import io.ktor.server.websocket.*
 import io.ktor.util.*
-import io.ktor.utils.io.ByteReadChannel
-import io.ktor.utils.io.ByteWriteChannel
-import io.ktor.utils.io.cancel
+import io.ktor.utils.io.*
 import io.ktor.utils.io.core.Input
 import io.ktor.utils.io.core.readAvailable
-import io.ktor.utils.io.readAvailable
-import io.ktor.utils.io.writeFully
 import io.ktor.websocket.*
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -64,6 +56,8 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.io.path.Path
 import kotlin.io.path.exists
 import kotlin.io.path.name
+import kotlin.io.use
+import kotlin.text.toByteArray
 
 /** Somewhat uniqueish parameter key name so it's unlikely to clash with anything a user would choose by chance. */
 private const val KOBWEB_PARAMS = "kobweb-params"
@@ -208,8 +202,8 @@ private fun PartData.toKobwebPart(): Multipart.Part = object : Multipart.Part {
 private fun MultiPartData.toKobwebMultipart(): Multipart = object : Multipart {
     private val multipartData = this@toKobwebMultipart
 
-    override val parts: Flow<Multipart.Part> = flow {
-        multipartData.forEachPart { partData -> emit(partData.toKobwebPart()) }
+    override suspend fun readNextPart(): Multipart.Part? {
+        return multipartData.readPart()?.toKobwebPart()
     }
 }
 

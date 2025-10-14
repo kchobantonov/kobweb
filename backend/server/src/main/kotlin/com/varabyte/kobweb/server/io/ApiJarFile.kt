@@ -101,7 +101,6 @@ class ApiJarFile(
         private val packagesFromServerClassLoader = listOf(
             "com.varabyte.kobweb.api.",
             "kotlin.",
-            "kotlinx.coroutines.",
         )
         override fun findClass(name: String): Class<*> {
             if (packagesFromServerClassLoader.any { name.startsWith(it) }) return serverClassLoader.loadClass(name)

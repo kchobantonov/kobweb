@@ -1,6 +1,5 @@
 package com.varabyte.kobweb.api.http
 
-import kotlinx.coroutines.flow.Flow
 import java.io.Closeable
 
 /**
@@ -53,15 +52,13 @@ interface Multipart {
     }
 
     /**
-     * The list of all parts in this multipart request.
+     * Read out the next part of this multipart request, or return null if no more parts are available.
      *
-     * You can either collect it directly or use [forEachPart] which is provided as a convenience method.
+     * You can either call this directly or use [forEachPart] which is provided as a convenience method.
      *
-     * If you collect it yourself, be sure to [close][Part.close] each part when you're done with it.
-     *
-     * You should not attempt to collect parts more than once; collecting them the first time will consume the parts.
+     * If you call this yourself, be sure to [close][Part.close] each part when you're done with it.
      */
-    val parts: Flow<Part>
+    suspend fun readNextPart(): Part?
 }
 
 /**
@@ -71,13 +68,14 @@ interface Multipart {
 class MultipartScope internal constructor(var autoClose: Boolean)
 
 /**
- * A convenience method that wraps [Multipart.parts] so you don't have to collect it yourself.
+ * A convenience method that wraps [Multipart.readNextPart] so you don't have to collect it yourself.
  *
  * @param autoClose If true, automatically call [Part.close][Multipart.Part.close] after each part is handled. You can
  *   override [MultipartScope.autoClose] as well per part, if you need to override this value on a case-by-case basis.
  */
 suspend fun Multipart.forEachPart(autoClose: Boolean = true, block: suspend MultipartScope.(Multipart.Part) -> Unit) {
-    parts.collect { part ->
+    while (true) {
+        val part = readNextPart() ?: break
         val scope = MultipartScope(autoClose)
         try {
             scope.block(part)

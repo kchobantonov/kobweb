@@ -9,7 +9,6 @@ version = libs.versions.kobweb.get()
 dependencies {
     api(projects.common.frameworkAnnotations) // api or else opt-in message won't be shown
     api(projects.backend.io)
-    api(libs.kotlinx.coroutines.core)
     implementation(projects.common.clientServerInternal)
     testImplementation(kotlin("test"))
     testImplementation(libs.truthish)
