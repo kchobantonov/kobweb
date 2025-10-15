@@ -44,10 +44,7 @@ interface Multipart {
     /**
      * Extra values beyond the common set, provided specifically based the type of part that we are dealing with.
      */
-    // NOTE: Only File for now. But we use a sealed interface to future proof this API; the upstream ktor API uses its
-    // own sealed interface to split between the four types of incoming parts so it seemed useful that we might do the
-    // same.
-    sealed interface Extras {
+    interface Extras {
         class File(val originalFileName: String?) : Extras
     }
 
