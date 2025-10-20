@@ -83,13 +83,28 @@ object FetchDefaults {
     var Redirect: RequestRedirect? = null
 }
 
+@Deprecated("DO NOT IGNORE. Please change to `fetchBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("fetchBytes(method, resource, headers, body, redirect, abortController)"))
+suspend fun Window.fetch(
+    method: HttpMethod,
+    resource: String,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    body: ByteArray? = null,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    abortController: AbortController? = null
+): ByteArray = fetchBytes(method, resource, headers, body, redirect, abortController)
+
 /**
  * A Kotlin-idiomatic version of the standard library's [Window.fetch] function.
+ *
+ * This method receives a request body as a byte array for the request and returns a body of bytes extracted from the
+ * response, making it good for designs where you implement a binary request / response design.
+ *
+ * This method throws if the response fails. You can use [tryFetchBytes] which will return null instead.
  *
  * @param headers An optional map of headers to send with the request. Note: If a body is specified, the
  *   `Content-Length` header will be automatically set. However, any headers set manually will always take precedence.
  */
-suspend fun Window.fetch(
+suspend fun Window.fetchBytes(
     method: HttpMethod,
     resource: String,
     headers: Map<String, Any>? = FetchDefaults.Headers,
@@ -138,7 +153,21 @@ suspend fun Window.fetch(
     return responseBytesDeferred.await()
 }
 
+@Deprecated("DO NOT IGNORE. Please change to `tryFetchBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("tryFetchBytes(method, resource, headers, body, redirect, logOnError, abortController)"))
 suspend fun Window.tryFetch(
+    method: HttpMethod,
+    resource: String,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    body: ByteArray? = null,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    logOnError: Boolean = false,
+    abortController: AbortController? = null
+): ByteArray? = tryFetchBytes(method, resource, headers, body, redirect, logOnError, abortController)
+
+/**
+ * Like [fetchBytes] but returns null if the fetch fails for any reason instead of throwing.
+ */
+suspend fun Window.tryFetchBytes(
     method: HttpMethod,
     resource: String,
     headers: Map<String, Any>? = FetchDefaults.Headers,
@@ -148,7 +177,7 @@ suspend fun Window.tryFetch(
     abortController: AbortController? = null
 ): ByteArray? {
     return try {
-        fetch(method, resource, headers, body, redirect, abortController)
+        fetchBytes(method, resource, headers, body, redirect, abortController)
     } catch (t: Throwable) {
         if (logOnError) {
             console.log("Error fetching resource \"$resource\"\n\n$t")

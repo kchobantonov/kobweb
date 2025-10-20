@@ -23,7 +23,7 @@ suspend inline fun <reified R> HttpFetcher.get(
 ): R {
     return Json.decodeFromString(
         responseDeserializer,
-        get(resource, headers, redirect, abortController).decodeToString()
+        getBytes(resource, headers, redirect, abortController).decodeToString()
     )
 }
 
@@ -40,7 +40,7 @@ suspend inline fun <reified R> HttpFetcher.tryGet(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer()
 ): R? {
-    return tryGet(resource, headers, redirect, abortController)
+    return tryGetBytes(resource, headers, redirect, abortController)
         ?.decodeToString()
         ?.let { Json.decodeFromString(responseDeserializer, it) }
 }
@@ -66,7 +66,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.post(
     bodySerializer: SerializationStrategy<B> = serializer(),
     responseDeserializer: DeserializationStrategy<R> = serializer()
 ): R {
-    val responseBytes = post(
+    val responseBytes = postBytes(
         resource,
         body,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
@@ -83,6 +83,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.post(
 /**
  * A serialize-friendly version of [post] that expects a body but does not expect a serialized response.
  */
+@Deprecated("DO NOT IGNORE. Please change to `postBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("postBytes(resource, body, headers, redirect, abortController, bodySerializer)"))
 suspend inline fun <reified B> HttpFetcher.post(
     resource: String,
     body: B,
@@ -90,8 +91,20 @@ suspend inline fun <reified B> HttpFetcher.post(
     redirect: RequestRedirect? = FetchDefaults.Redirect,
     abortController: AbortController? = null,
     bodySerializer: SerializationStrategy<B> = serializer(),
+): ByteArray = postBytes(resource, body, headers, redirect, abortController, bodySerializer)
+
+/**
+ * A serialize-friendly version of [post] that expects a body and returns its response as a raw byte array.
+ */
+suspend inline fun <reified B> HttpFetcher.postBytes(
+    resource: String,
+    body: B,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    abortController: AbortController? = null,
+    bodySerializer: SerializationStrategy<B> = serializer(),
 ): ByteArray {
-    return post(
+    return postBytes(
         resource,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
         Json.encodeToString(bodySerializer, body).encodeToByteArray(),
@@ -110,7 +123,7 @@ suspend inline fun <reified R> HttpFetcher.post(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R {
-    val responseBytes = post(
+    val responseBytes = postBytes(
         resource,
         headers,
         body = null,
@@ -139,7 +152,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.tryPost(
     bodySerializer: SerializationStrategy<B> = serializer(),
     responseDeserializer: DeserializationStrategy<R> = serializer()
 ): R? {
-    val responseBytes = tryPost(
+    val responseBytes = tryPostBytes(
         resource,
         body,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
@@ -157,6 +170,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.tryPost(
 /**
  * A serialize-friendly version of [tryPost] that expects a body but does not expect a serialized response.
  */
+@Deprecated("DO NOT IGNORE. Please change to `tryPostBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("tryPostBytes(resource, body, headers, redirect, abortController, bodySerializer)"))
 suspend inline fun <reified B> HttpFetcher.tryPost(
     resource: String,
     body: B,
@@ -164,8 +178,20 @@ suspend inline fun <reified B> HttpFetcher.tryPost(
     redirect: RequestRedirect? = FetchDefaults.Redirect,
     abortController: AbortController? = null,
     bodySerializer: SerializationStrategy<B> = serializer(),
+): ByteArray? = tryPostBytes(resource, body, headers, redirect, abortController, bodySerializer)
+
+/**
+ * A serialize-friendly version of [tryPost] that expects a body and returns its response as a raw byte array.
+ */
+suspend inline fun <reified B> HttpFetcher.tryPostBytes(
+    resource: String,
+    body: B,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    abortController: AbortController? = null,
+    bodySerializer: SerializationStrategy<B> = serializer(),
 ): ByteArray? {
-    return tryPost(
+    return tryPostBytes(
         resource,
         headers,
         Json.encodeToString(bodySerializer, body).encodeToByteArray(),
@@ -184,7 +210,7 @@ suspend inline fun <reified R> HttpFetcher.tryPost(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R? {
-    val responseBytes = tryPost(
+    val responseBytes = tryPostBytes(
         resource,
         headers,
         body = null,
@@ -219,7 +245,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.put(
     bodySerializer: SerializationStrategy<B> = serializer(),
     responseDeserializer: DeserializationStrategy<R> = serializer()
 ): R {
-    val responseBytes = put(
+    val responseBytes = putBytes(
         resource,
         body,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
@@ -236,6 +262,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.put(
 /**
  * A serialize-friendly version of [put] that expects a body but does not expect a serialized response.
  */
+@Deprecated("DO NOT IGNORE. Please change to `putBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("putBytes(resource, body, headers, redirect, abortController, bodySerializer)"))
 suspend inline fun <reified B> HttpFetcher.put(
     resource: String,
     body: B,
@@ -243,8 +270,20 @@ suspend inline fun <reified B> HttpFetcher.put(
     redirect: RequestRedirect? = FetchDefaults.Redirect,
     abortController: AbortController? = null,
     bodySerializer: SerializationStrategy<B> = serializer(),
+): ByteArray = putBytes(resource, body, headers, redirect, abortController, bodySerializer)
+
+/**
+ * A serialize-friendly version of [put] that expects a body and returns its response as a raw byte array.
+ */
+suspend inline fun <reified B> HttpFetcher.putBytes(
+    resource: String,
+    body: B,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    abortController: AbortController? = null,
+    bodySerializer: SerializationStrategy<B> = serializer(),
 ): ByteArray {
-    return put(
+    return putBytes(
         resource,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
         Json.encodeToString(bodySerializer, body).encodeToByteArray(),
@@ -263,7 +302,7 @@ suspend inline fun <reified R> HttpFetcher.put(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R {
-    val responseBytes = put(
+    val responseBytes = putBytes(
         resource,
         headers,
         body = null,
@@ -292,7 +331,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.tryPut(
     bodySerializer: SerializationStrategy<B> = serializer(),
     responseDeserializer: DeserializationStrategy<R> = serializer()
 ): R? {
-    val responseBytes = tryPut(
+    val responseBytes = tryPutBytes(
         resource,
         body,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
@@ -310,6 +349,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.tryPut(
 /**
  * A serialize-friendly version of [tryPut] that expects a body but does not expect a serialized response.
  */
+@Deprecated("DO NOT IGNORE. Please change to `tryPutBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("tryPutBytes(resource, body, headers, redirect, abortController, bodySerializer)"))
 suspend inline fun <reified B> HttpFetcher.tryPut(
     resource: String,
     body: B,
@@ -317,8 +357,20 @@ suspend inline fun <reified B> HttpFetcher.tryPut(
     redirect: RequestRedirect? = FetchDefaults.Redirect,
     abortController: AbortController? = null,
     bodySerializer: SerializationStrategy<B> = serializer(),
+): ByteArray? = tryPutBytes(resource, body, headers, redirect, abortController, bodySerializer)
+
+/**
+ * A serialize-friendly version of [tryPut] that expects a body and returns its response as a raw byte array.
+ */
+suspend inline fun <reified B> HttpFetcher.tryPutBytes(
+    resource: String,
+    body: B,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    abortController: AbortController? = null,
+    bodySerializer: SerializationStrategy<B> = serializer(),
 ): ByteArray? {
-    return tryPut(
+    return tryPutBytes(
         resource,
         headers,
         Json.encodeToString(bodySerializer, body).encodeToByteArray(),
@@ -337,7 +389,7 @@ suspend inline fun <reified R> HttpFetcher.tryPut(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R? {
-    val responseBytes = tryPut(
+    val responseBytes = tryPutBytes(
         resource,
         headers,
         body = null,
@@ -371,7 +423,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.patch(
     bodySerializer: SerializationStrategy<B> = serializer(),
     responseDeserializer: DeserializationStrategy<R> = serializer()
 ): R {
-    val responseBytes = patch(
+    val responseBytes = patchBytes(
         resource,
         body,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
@@ -388,6 +440,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.patch(
 /**
  * A serialize-friendly version of [patch] that expects a body but does not expect a serialized response.
  */
+@Deprecated("DO NOT IGNORE. Please change to `patchBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("patchBytes(resource, body, headers, redirect, abortController, bodySerializer)"))
 suspend inline fun <reified B> HttpFetcher.patch(
     resource: String,
     body: B,
@@ -395,8 +448,20 @@ suspend inline fun <reified B> HttpFetcher.patch(
     redirect: RequestRedirect? = FetchDefaults.Redirect,
     abortController: AbortController? = null,
     bodySerializer: SerializationStrategy<B> = serializer(),
+): ByteArray = patchBytes(resource, body, headers, redirect, abortController, bodySerializer)
+
+/**
+ * A serialize-friendly version of [patch] that expects a body and returns its response as a raw byte array.
+ */
+suspend inline fun <reified B> HttpFetcher.patchBytes(
+    resource: String,
+    body: B,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    abortController: AbortController? = null,
+    bodySerializer: SerializationStrategy<B> = serializer(),
 ): ByteArray {
-    return patch(
+    return patchBytes(
         resource,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
         Json.encodeToString(bodySerializer, body).encodeToByteArray(),
@@ -415,7 +480,7 @@ suspend inline fun <reified R> HttpFetcher.patch(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R {
-    val responseBytes = patch(
+    val responseBytes = patchBytes(
         resource,
         headers,
         body = null,
@@ -444,7 +509,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.tryPatch(
     bodySerializer: SerializationStrategy<B> = serializer(),
     responseDeserializer: DeserializationStrategy<R> = serializer()
 ): R? {
-    val responseBytes = tryPatch(
+    val responseBytes = tryPatchBytes(
         resource,
         body,
         mapOf("Content-type" to "application/json") + headers.orEmpty(),
@@ -462,6 +527,7 @@ suspend inline fun <reified B, reified R> HttpFetcher.tryPatch(
 /**
  * A serialize-friendly version of [tryPatch] that expects a body but does not expect a serialized response.
  */
+@Deprecated("DO NOT IGNORE. Please change to `tryPatchBytes` instead. This method will be modified soon in a backwards incompatible way, in order to support additional cases that the current form doesn't support.", replaceWith = ReplaceWith("tryPatchBytes(resource, body, headers, redirect, abortController, bodySerializer)"))
 suspend inline fun <reified B> HttpFetcher.tryPatch(
     resource: String,
     body: B,
@@ -469,8 +535,20 @@ suspend inline fun <reified B> HttpFetcher.tryPatch(
     redirect: RequestRedirect? = FetchDefaults.Redirect,
     abortController: AbortController? = null,
     bodySerializer: SerializationStrategy<B> = serializer(),
+): ByteArray? = tryPatchBytes(resource, body, headers, redirect, abortController, bodySerializer)
+
+/**
+ * A serialize-friendly version of [tryPatch] that expects a body and returns its response as a raw byte array.
+ */
+suspend inline fun <reified B> HttpFetcher.tryPatchBytes(
+    resource: String,
+    body: B,
+    headers: Map<String, Any>? = FetchDefaults.Headers,
+    redirect: RequestRedirect? = FetchDefaults.Redirect,
+    abortController: AbortController? = null,
+    bodySerializer: SerializationStrategy<B> = serializer(),
 ): ByteArray? {
-    return tryPatch(
+    return tryPatchBytes(
         resource,
         headers,
         Json.encodeToString(bodySerializer, body).encodeToByteArray(),
@@ -489,7 +567,7 @@ suspend inline fun <reified R> HttpFetcher.tryPatch(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R? {
-    val responseBytes = tryPatch(
+    val responseBytes = tryPatchBytes(
         resource,
         headers,
         body = null,
@@ -518,7 +596,7 @@ suspend inline fun <reified R> HttpFetcher.delete(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R {
-    val responseBytes = delete(
+    val responseBytes = deleteBytes(
         resource,
         headers,
         redirect,
@@ -538,7 +616,7 @@ suspend inline fun <reified R> HttpFetcher.tryDelete(
     abortController: AbortController? = null,
     responseDeserializer: DeserializationStrategy<R> = serializer(),
 ): R? {
-    val responseBytes = tryDelete(
+    val responseBytes = tryDeleteBytes(
         resource,
         headers,
         redirect,
