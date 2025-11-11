@@ -223,11 +223,17 @@ private suspend fun ByteSource.transferTo(channel: ByteWriteChannel): Int {
 
 private suspend fun RoutingContext.handleApiCall(
     env: ServerEnvironment,
+    conf: KobwebConf,
     apiJar: ApiJarFile,
     httpMethod: HttpMethod,
     logger: Logger,
 ) {
     call.parameters.getAll(KOBWEB_PARAMS)?.joinToString("/")?.let { pathStr ->
+        val routeConfig = conf.server.routeConfigs.find(pathStr.removePrefix("/api/").prefixIfNot("/"))
+        routeConfig?.formFieldLimit?.inWholeBytes?.let { formFieldLimit ->
+            call.formFieldLimit = formFieldLimit
+        }
+
         val body: Body? = when (httpMethod) {
             HttpMethod.PATCH, HttpMethod.POST, HttpMethod.PUT -> {
                 val contentType = call.request.contentType().toString()
@@ -451,6 +457,7 @@ private fun Routing.setupStreaming(
 
 private fun Routing.configureApiRouting(
     env: ServerEnvironment,
+    conf: KobwebConf,
     apiJar: ApiJarFile,
     basePath: String,
     logger: Logger
@@ -458,13 +465,13 @@ private fun Routing.configureApiRouting(
     val path = "$basePath/api/{$KOBWEB_PARAMS...}"
     HttpMethod.entries.forEach { httpMethod ->
         when (httpMethod) {
-            HttpMethod.DELETE -> delete(path) { handleApiCall(env, apiJar, httpMethod, logger) }
-            HttpMethod.GET -> get(path) { handleApiCall(env, apiJar, httpMethod, logger) }
-            HttpMethod.HEAD -> head(path) { handleApiCall(env, apiJar, httpMethod, logger) }
-            HttpMethod.OPTIONS -> options(path) { handleApiCall(env, apiJar, httpMethod, logger) }
-            HttpMethod.PATCH -> patch(path) { handleApiCall(env, apiJar, httpMethod, logger) }
-            HttpMethod.POST -> post(path) { handleApiCall(env, apiJar, httpMethod, logger) }
-            HttpMethod.PUT -> put(path) { handleApiCall(env, apiJar, httpMethod, logger) }
+            HttpMethod.DELETE -> delete(path) { handleApiCall(env, conf, apiJar, httpMethod, logger) }
+            HttpMethod.GET -> get(path) { handleApiCall(env, conf, apiJar, httpMethod, logger) }
+            HttpMethod.HEAD -> head(path) { handleApiCall(env, conf, apiJar, httpMethod, logger) }
+            HttpMethod.OPTIONS -> options(path) { handleApiCall(env, conf, apiJar, httpMethod, logger) }
+            HttpMethod.PATCH -> patch(path) { handleApiCall(env, conf, apiJar, httpMethod, logger) }
+            HttpMethod.POST -> post(path) { handleApiCall(env, conf, apiJar, httpMethod, logger) }
+            HttpMethod.PUT -> put(path) { handleApiCall(env, conf, apiJar, httpMethod, logger) }
         }
     }
 }
@@ -674,7 +681,7 @@ private fun Application.configureDevRouting(
         }
 
         if (apiJar != null) {
-            configureApiRouting(ServerEnvironment.DEV, apiJar, basePath, logger)
+            configureApiRouting(ServerEnvironment.DEV, conf, apiJar, basePath, logger)
             setupStreaming(ServerEnvironment.DEV, this@configureDevRouting, conf, apiJar, logger)
         }
 
@@ -740,7 +747,7 @@ private fun Application.configureFullstackProdRouting(
         val basePath = conf.site.basePathNormalized
 
         if (apiJar != null) {
-            configureApiRouting(ServerEnvironment.PROD, apiJar, basePath, logger)
+            configureApiRouting(ServerEnvironment.PROD, conf, apiJar, basePath, logger)
             // Since prod doesn't have live reloading, we can avoid setting up streaming if there are no API streams
             // declared at this point.
             if (apiJar.apis.numApiStreams > 0) {
