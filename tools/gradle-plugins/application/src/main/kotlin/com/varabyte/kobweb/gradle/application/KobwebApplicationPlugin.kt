@@ -98,7 +98,7 @@ class KobwebApplicationPlugin @Inject constructor(
             if (!path.exists()) {
                 throw GradleException("Missing conf.yaml file from Kobweb folder. Did you delete it?")
             }
-            content!!
+            content ?: throw GradleException("Failed to deserialize conf.yaml. See callstack for more detail.", deserializationException)
         }
 
         val kobwebBlock = project.kobwebBlock

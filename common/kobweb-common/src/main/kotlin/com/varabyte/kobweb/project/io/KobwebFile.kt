@@ -54,15 +54,30 @@ open class KobwebReadableTextFile<T : Any>(
 
     private var lastBytes: ByteArray? = null
     private var _content: T? = null
+
+    /**
+     * An exception which will be set if [content] fails to get set due to a deserialization error.
+     */
+    var deserializationException: Exception? = null
+        private set
+
+    /**
+     * The content of this text file, post-deserialization.
+     *
+     * If null, it means that the file didn't exist OR deserialization failed. If the latter, [deserializationException]
+     * will be set.
+     */
     val content: T?
         get() {
             return delegateFile.content
                 ?.let { bytes ->
                     if (lastBytes == null || bytes !== lastBytes) {
                         try {
+                            deserializationException = null
                             _content = deserialize(bytes.toString(Charsets.UTF_8))
                             lastBytes = bytes
-                        } catch (_: Exception) {
+                        } catch (ex: Exception) {
+                            deserializationException = ex
                             _content = null
                             lastBytes = null
                         }
