@@ -6,7 +6,6 @@ package com.varabyte.kobweb.project.conf
 import com.charleskorn.kaml.Yaml
 import com.varabyte.kobweb.common.data.DataSize
 import com.varabyte.kobweb.common.data.DataSize.Companion.mebibytes
-import com.varabyte.kobweb.common.text.prefixIfNot
 import com.varabyte.kobweb.common.time.DurationSerializer
 import com.varabyte.kobweb.common.yaml.nonStrictDefault
 import com.varabyte.kobweb.project.KobwebFolder
@@ -36,7 +35,6 @@ class Server(
     val logging: Logging = Logging(),
     val cors: Cors = Cors(),
     val redirects: List<Redirect> = emptyList(),
-    val routeConfigs: RouteConfigs = RouteConfigs(),
     val streaming: Streaming = Streaming(),
     val nativeLibraries: List<NativeLibrary> = emptyList(),
 ) {
@@ -156,37 +154,6 @@ class Server(
         val from: String,
         val to: String,
     )
-
-    @Serializable
-    class RouteConfigs(
-        /** A list of route configuration values tied to matching route patterns. */
-        val entries: List<RouteConfig> = emptyList(),
-        /** Fallback route configuration values to use if no matching entry was found. */
-        val default: RouteConfigValues? = null,
-    ) {
-        fun find(route: String): RouteConfigValues? {
-            val route = route.prefixIfNot("/")
-            return entries.firstOrNull { it.route.toRegex().matches(route) } ?: default
-        }
-    }
-
-    @Serializable
-    open class RouteConfigValues(
-        /**
-         * Determines the maximum size allowed for form field data in a request.
-         *
-         * If not specified, we allow the backend framework to choose the default value (currently 64KiB).
-         */
-        val formFieldLimit: DataSize? = null,
-    )
-
-    @Serializable
-    class RouteConfig(
-        /**
-         * A route regex pattern
-         */
-        val route: String,
-    ) : RouteConfigValues()
 
     /**
      * Configuration for Streaming APIs.
