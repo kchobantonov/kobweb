@@ -1,6 +1,5 @@
-package text
+package com.varabyte.kobweb.util.text
 
-import com.varabyte.kobweb.util.text.PatternMapper
 import com.varabyte.truthish.assertThat
 import kotlin.test.Test
 
