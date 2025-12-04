@@ -402,7 +402,7 @@ class KobwebApplicationPlugin @Inject constructor(
 
                 doFirst {
                     if (!hasKobwebApiDepProvider.get()) {
-                        throw GradleException("e: A required jvm dependency for a Kobweb project with includeServer=true was not found. To fix, add compilerOnly(\"com.varabyte.kobweb:kobweb-api\"), or compileOnly(libs.kobweb.api) if using the standard Kobweb template, to the jvmMain.sourceSet block.")
+                        throw GradleException("e: A required jvm dependency for a Kobweb project with includeServer=true was not found. To fix, add `compileOnly(\"com.varabyte.kobweb:kobweb-api\")`, or `compileOnly(libs.kobweb.api)` if using the standard Kobweb template, to the `sourceSets.jvmMain.dependencies` block.")
                     }
                 }
             }
