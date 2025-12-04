@@ -12,7 +12,6 @@ import com.varabyte.kobweb.ksp.common.API_INTERCEPTOR_FQN
 import com.varabyte.kobweb.ksp.common.RESPONSE_FQN
 import com.varabyte.kobweb.project.backend.ApiInterceptorEntry
 import com.varabyte.kobweb.project.backend.AppBackendData
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class AppBackendProcessor(
@@ -42,10 +41,10 @@ class AppBackendProcessor(
                 logger.error("At most one @ApiInterceptor function is allowed per project.")
             } else {
                 apiInterceptorMethods.singleOrNull()?.let {
-                    val funDeclaration = (it as KSFunctionDeclaration)
+                    val funDeclaration = it as KSFunctionDeclaration
                     funDeclaration.returnType?.resolve()?.let { returnType ->
                         if (returnType.declaration.qualifiedName?.asString() != RESPONSE_FQN || returnType.isMarkedNullable) {
-                            logger.error("The method annotated with @ApiInterceptor must return `Response`, got `${returnType.declaration.qualifiedName?.asString()}${if (returnType.isMarkedNullable) "?" else ""}`")
+                            logger.error("The method annotated with @ApiInterceptor must return `Response`, got `${returnType.declaration.qualifiedName?.asString()}${if (returnType.isMarkedNullable) "?" else ""}`", funDeclaration)
                         }
                     }
 
