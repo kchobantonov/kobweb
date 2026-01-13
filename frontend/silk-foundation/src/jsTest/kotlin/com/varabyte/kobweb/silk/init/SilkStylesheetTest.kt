@@ -5,7 +5,6 @@ import com.varabyte.kobweb.compose.ui.graphics.Colors
 import com.varabyte.kobweb.compose.ui.modifiers.*
 import com.varabyte.kobweb.silk.style.breakpoint.Breakpoint
 import com.varabyte.kobweb.silk.testutils.flattenCssRules
-import com.varabyte.kobweb.silk.testutils.toProperties
 import com.varabyte.kobweb.silk.theme.ImmutableSilkTheme
 import com.varabyte.kobweb.silk.theme.MutableSilkTheme
 import com.varabyte.kobweb.silk.theme._SilkTheme
@@ -70,7 +69,7 @@ class SilkStylesheetTest {
         assertThrows<IllegalStateException> {
             SilkStylesheetInstance.registerStylesAndKeyframesInto(stylesheet)
         }.also { ex ->
-            assertThat(ex.message!!.contains("invalid-modifier"))
+            assertThat(ex.message!!).contains("\"id\"")
         }
     }
 }
