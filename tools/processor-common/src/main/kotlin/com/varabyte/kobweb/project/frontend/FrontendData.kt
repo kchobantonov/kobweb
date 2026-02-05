@@ -57,10 +57,16 @@ fun FrontendData.assertValid(throwError: (String) -> Unit) {
 }
 
 private fun Iterable<PageEntry>.assertValidPages(throwError: (String) -> Unit) {
-    val entriesByRoute = this.groupBy { it.route }
+    // Remove contents of dynamic segments to ensure we don't have two routes that resolve to the same dynamic path,
+    // e.g. a/{b}/c/{d} should conflict with "a/{x}/c/{y}"
+    fun String.anonymizeDynamicSegments(): String {
+        return this.replace(Regex("\\{[^}]*}"), "{...}")
+    }
+
+    val entriesByRoute = this.groupBy { it.route.anonymizeDynamicSegments() }
     entriesByRoute.forEach { (route, pages) ->
         if (pages.size > 1) {
-            throwError("The route \"$route\" was defined more than once. Used by:\n${pages.joinToString("\n") { page -> " - ${page.fqn}" }}")
+            throwError("The route \"$route\" was defined more than once. Used by: ${pages.joinToString(", ") { page -> page.fqn }}")
         }
 
         if (route.removePrefix("/").split('/', limit = 2).first() == "api") {
