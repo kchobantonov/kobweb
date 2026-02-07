@@ -41,23 +41,11 @@ fun StyleScope.colorScheme(colorScheme: ColorScheme) {
 // See: https://developer.mozilla.org/en-US/docs/Web/CSS/color
 // Named CSSColor to avoid ambiguity with org.jetbrains.compose.web.css.Color
 sealed interface CSSColor : StylePropertyValue {
-    companion object : CssGlobalValues<CSSColor> {
-        // Keywords
-        @Deprecated(
-            "We are removing duplicate values.",
-            ReplaceWith("Color.currentColor", "org.jetbrains.compose.web.css.Color")
-        )
-        val CurrentColor get() = "currentColor".unsafeCast<CSSColor>()
-    }
+    companion object : CssGlobalValues<CSSColor>
 }
 
 fun StyleScope.color(color: CSSColor) {
     property("color", color)
-}
-
-@Deprecated("We are moving away from stingly-typed values. Use `CSSColor`, `org.jetbrains.compose.web.css.Color`, or `com.varabyte.kobweb.compose.ui.graphics.Colors` instead.")
-fun StyleScope.color(value: String) {
-    property("color", value)
 }
 
 // See: https://developer.mozilla.org/en-US/docs/Web/CSS/hue-interpolation-method

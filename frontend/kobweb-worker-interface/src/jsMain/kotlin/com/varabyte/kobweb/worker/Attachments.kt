@@ -33,9 +33,6 @@ private const val METADATA_NAMES_KEY = "_metadataNames"
 
 private fun suffixedKey(key: String, suffix: String?) = key + suffix?.let { "_$it" }.orEmpty()
 
-@Deprecated("Kobweb Worker `Transferables` has been renamed more generically to `Attachments` as it now supports adding structurally cloneable items as well.", replaceWith = ReplaceWith("Attachments"))
-typealias Transferables = Attachments
-
 /**
  * Attachments are special objects which are allowed to be moved between app / worker threads.
  *

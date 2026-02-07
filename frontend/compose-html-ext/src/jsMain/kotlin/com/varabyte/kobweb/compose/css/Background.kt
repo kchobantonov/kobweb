@@ -50,20 +50,7 @@ fun StyleScope.backgroundClip(backgroundClip: BackgroundClip) {
 
 // See: https://developer.mozilla.org/en-US/docs/Web/CSS/background-color
 sealed interface BackgroundColor : StylePropertyValue {
-    companion object : CssGlobalValues<BackgroundColor> {
-        // Keywords
-        @Deprecated(
-            "We are removing duplicate values.",
-            ReplaceWith("Color.currentColor", "org.jetbrains.compose.web.css.Color")
-        )
-        val CurrentColor get() = "currentcolor".unsafeCast<BackgroundColor>()
-
-        @Deprecated(
-            "We are removing duplicate values.",
-            ReplaceWith("Color.transparent", "org.jetbrains.compose.web.css.Color")
-        )
-        val Transparent get() = "transparent".unsafeCast<BackgroundColor>()
-    }
+    companion object : CssGlobalValues<BackgroundColor>
 }
 
 fun StyleScope.backgroundColor(backgroundColor: BackgroundColor) {

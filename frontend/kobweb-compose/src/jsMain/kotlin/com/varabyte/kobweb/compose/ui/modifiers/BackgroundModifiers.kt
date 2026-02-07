@@ -72,10 +72,6 @@ fun Modifier.background(color: CSSColorValue, vararg backgrounds: Background.Lis
 fun Modifier.background(color: CSSColorValue, backgrounds: List<Background.Listable>) =
     background(color, *backgrounds.toTypedArray())
 
-@Deprecated("Use `Modifier.background { attachment(...) }` instead.", ReplaceWith("background { attachment(backgroundAttachment) }"))
-fun Modifier.backgroundAttachment(backgroundAttachment: BackgroundAttachment) =
-    background { attachment(backgroundAttachment) }
-
 fun Modifier.backgroundBlendMode(blendMode: BackgroundBlendMode) = styleModifier {
     backgroundBlendMode(blendMode)
 }
@@ -86,30 +82,9 @@ fun Modifier.backgroundBlendMode(vararg blendModes: BackgroundBlendMode.Listable
 fun Modifier.backgroundBlendMode(blendModes: List<BackgroundBlendMode.Listable>) =
     backgroundBlendMode(BackgroundBlendMode.list(*blendModes.toTypedArray()))
 
-@Deprecated("Use `Modifier.background { clip(...) }` instead.", ReplaceWith("background { clip(backgroundClip) }"))
-fun Modifier.backgroundClip(backgroundClip: BackgroundClip) = background { clip(backgroundClip) }
-
 fun Modifier.backgroundColor(color: CSSColorValue) = background { color(color) }
 fun Modifier.backgroundColor(backgroundColor: BackgroundColor) = background { color(backgroundColor) }
 
 fun Modifier.backgroundImage(backgroundImage: BackgroundImage) = background { image(backgroundImage) }
 fun Modifier.backgroundImage(url: CSSUrl) = background { image(url) }
 fun Modifier.backgroundImage(gradient: Gradient) = background { image(gradient) }
-
-@Deprecated("Use `Modifier.background { origin(...) }` instead.", ReplaceWith("background { origin(backgroundOrigin) }"))
-fun Modifier.backgroundOrigin(backgroundOrigin: BackgroundOrigin) = background { origin(backgroundOrigin) }
-
-@Deprecated("Use `Modifier.background { position(...) }` instead.", ReplaceWith("background { position(backgroundPosition) }"))
-fun Modifier.backgroundPosition(backgroundPosition: BackgroundPosition) = background { position(backgroundPosition) }
-
-@Deprecated("Use `Modifier.background { repeat(...) }` instead.", ReplaceWith("background { repeat(backgroundRepeat) }"))
-fun Modifier.backgroundRepeat(backgroundRepeat: BackgroundRepeat) = background { repeat(backgroundRepeat) }
-
-@Deprecated("Use `Modifier.background { repeat(...) }` instead.", ReplaceWith("background { repeat(horizontalRepeat, verticalRepeat) }"))
-fun Modifier.backgroundRepeat(
-    horizontalRepeat: BackgroundRepeat.Mode,
-    verticalRepeat: BackgroundRepeat.Mode
-) = background { repeat(horizontalRepeat, verticalRepeat) }
-
-@Deprecated("Use `Modifier.background { size(...) }` instead.", ReplaceWith("background { size(backgroundSize) }"))
-fun Modifier.backgroundSize(backgroundSize: BackgroundSize) = background { size(backgroundSize) }
