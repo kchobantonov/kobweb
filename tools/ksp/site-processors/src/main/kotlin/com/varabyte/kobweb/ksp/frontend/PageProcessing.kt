@@ -38,12 +38,13 @@ fun processPagesFun(
         // To maintain the general association between the file name and the slug, we reject route overrides which use
         // the "{}" inferred dynamic segment syntax in any part except for the last.
         // e.g. "/dynamic/{example}/route/{}" is OK but "/dynamic/{}/route/{example}" is not.
-        // (Also, catch all dynamic segments are not allowed in any part except for the last as well)
+        // (While we're here, catch all segments, e.g. "{...rest}", and optional segments, e.g. "{example?}" are also
+        // only allowed in the final position.)
         if (routeOverride == null ||
             routeOverride.substringBeforeLast("/", missingDelimiterValue = "").split("/")
                 .none { segment ->
                     val dynamicSegment = DynamicRouteSegment.tryCreate(segment)
-                    dynamicSegment != null && (dynamicSegment.isInferred || dynamicSegment.isCatchAll)
+                    dynamicSegment != null && (dynamicSegment.isInferred || dynamicSegment.isCatchAll || dynamicSegment.isOptional)
                 }
         ) {
             val route = processRoute(
@@ -65,7 +66,7 @@ fun processPagesFun(
             )
         } else {
             logger.warn(
-                "Skipped over `@$pageSimpleName fun ${funName}`. Route override is invalid.",
+                "Skipped over `@$pageSimpleName fun ${funName}`. Route override `${routeOverride}` is invalid, as it contains an inferred, catch-all, and/or optional dynamic segment in a middle location.",
                 annotatedFun
             )
         }
