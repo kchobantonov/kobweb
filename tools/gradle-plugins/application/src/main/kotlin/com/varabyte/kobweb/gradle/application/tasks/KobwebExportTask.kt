@@ -224,6 +224,8 @@ abstract class KobwebExportTask @Inject constructor(
                     KobwebBrowser.Chromium -> playwright.chromium()
                     KobwebBrowser.Firefox -> playwright.firefox()
                     KobwebBrowser.WebKit -> playwright.webkit()
+                    // Not technically necessary but quiets down a confused compiler warning
+                    else -> playwright.chromium()
                 }
                 browserType.launch().use { browser ->
                     val basePath = BasePath(confInputs.basePath)
